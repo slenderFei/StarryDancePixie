@@ -1,0 +1,102 @@
+import React, { lazy, useEffect, Suspense, useRef } from 'react'
+import WordPanel from './components/WordPanel'
+import GameUI from './components/GameUI'
+import LoadingScreen from './components/LoadingScreen'
+import BackgroundMusic from './components/BackgroundMusic'
+import useGameStore from './store/gameStore'
+import { initSpeechSynthesis } from './utils/soundEffects'
+import './App.css'
+
+const GameCanvas = lazy(() => import('./components/GameCanvas'))
+const PoseDetector = lazy(() => import('./components/PoseDetector'))
+const FallingWordsOverlay = lazy(() => import('./components/FallingWordsOverlay'))
+
+function App() {
+  const gameState = useGameStore((s) => s.gameState)
+  const playMode = useGameStore((s) => s.playMode)
+  const setMousePosition = useGameStore((s) => s.setMousePosition)
+  const mouseFrameRef = useRef(null)
+  const mousePointRef = useRef({ x: 0, y: 0 })
+
+  const isClassicPlaying =
+    gameState === 'learning' ||
+    gameState === 'action_pending' ||
+    gameState === 'action_success'
+  const isArcadePlaying = gameState === 'arcade_playing'
+  const isPlaying = isClassicPlaying || isArcadePlaying
+  const hideCanvasForBalloon = isArcadePlaying && playMode === 'balloon'
+  const shouldRenderCanvas = isPlaying && !hideCanvasForBalloon
+  
+  // 初始化语音合成（某些浏览器需要）
+  useEffect(() => {
+    initSpeechSynthesis()
+  }, [])
+  
+  // 追踪鼠标位置
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mousePointRef.current = {
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: -(e.clientY / window.innerHeight) * 2 + 1,
+      }
+
+      if (mouseFrameRef.current) return
+      mouseFrameRef.current = requestAnimationFrame(() => {
+        mouseFrameRef.current = null
+        setMousePosition(mousePointRef.current.x, mousePointRef.current.y)
+      })
+    }
+    
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      if (mouseFrameRef.current) {
+        cancelAnimationFrame(mouseFrameRef.current)
+      }
+    }
+  }, [setMousePosition])
+  
+  return (
+    <div className="app-container">
+      {/* 3D 场景 */}
+      {shouldRenderCanvas && (
+        <Suspense fallback={null}>
+          <GameCanvas />
+        </Suspense>
+      )}
+      
+      {/* MediaPipe 摄像头与骨架 */}
+      <Suspense fallback={null}>
+        <PoseDetector />
+      </Suspense>
+
+      {/* 街机图层：盖住全屏实况，夹在摄像头层与顶部 GameUI(z100) 之间 */}
+      {isArcadePlaying && (
+        <Suspense fallback={null}>
+          <FallingWordsOverlay />
+        </Suspense>
+      )}
+
+      {/* 游戏 UI */}
+      <GameUI />
+      
+      {/* 单词面板 - 右侧 */}
+      {isClassicPlaying && <WordPanel />}
+      
+      {/* 角色标签 - 左上（魔法学单词模式） */}
+      {isClassicPlaying && (
+        <div className="avatar-label">
+          ✨ 小精灵会跟着你动哦！
+        </div>
+      )}
+      
+      {/* 背景音乐播放器 */}
+      {isPlaying && <BackgroundMusic />}
+      
+      {/* 加载屏幕 */}
+      {gameState === 'idle' && <LoadingScreen />}
+    </div>
+  )
+}
+
+export default App

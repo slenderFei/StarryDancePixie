@@ -1,0 +1,263 @@
+.app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 111, 174, 0.34), transparent 26%),
+    radial-gradient(circle at 82% 10%, rgba(45, 212, 255, 0.28), transparent 30%),
+    linear-gradient(160deg, #101828 0%, #1d1b3f 48%, #062c3d 100%);
+}
+
+.canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.canvas-container--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 摄像头画面容器 - 左下角显示 */
+.pose-detector-container {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(18px, env(safe-area-inset-left));
+  width: clamp(190px, 19vw, 280px);
+  height: clamp(142px, 14.25vw, 210px);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 100;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 18px 52px rgba(0, 0, 0, 0.34),
+    0 0 32px rgba(45, 212, 255, 0.2);
+  background: rgba(12, 18, 38, 0.72);
+  backdrop-filter: blur(14px);
+}
+
+/* 真人 vs 卡通 对比标签 */
+.pose-detector-container::before {
+  content: 'LIVE CAMERA';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  transform: none;
+  background: rgba(15, 23, 42, 0.62);
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #e0fbff;
+  z-index: 10;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pose-detector-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.pose-detector-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+
+/* ========== 气球跳跳碰：全屏摄像头 + 骨架叠层（勿删 video 选择器，否则画面无法铺满） ========== */
+.pose-balloon-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100svh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  z-index: 41 !important;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  background: #0f172a;
+}
+
+.pose-balloon-fullscreen video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  object-fit: cover;
+  object-position: center center;
+  transform: scaleX(-1);
+  transform-origin: center center;
+  display: block;
+  z-index: 0;
+}
+
+.pose-balloon-fullscreen canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block;
+  /* 与 video 同源镜像；骨架点画在「逻辑未镜像」cover 坐标系（lmToCanvasMirroredDrawingPx） */
+  transform: scaleX(-1);
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pose-balloon-fullscreen .camera-loading {
+  z-index: 10;
+}
+
+.pose-balloon-fullscreen .camera-status,
+.pose-balloon-fullscreen .pose-status {
+  z-index: 12;
+}
+
+.pose-balloon-fullscreen .camera-status {
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+}
+
+.pose-balloon-fullscreen .pose-status {
+  bottom: max(96px, env(safe-area-inset-bottom, 96px));
+  white-space: normal;
+  max-width: min(92vw, 480px);
+  line-height: 1.35;
+}
+
+.camera-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.95);
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(0, 206, 209, 0.25);
+  border-top: 3px solid #22d3ee;
+  border-radius: 50%;
+  animation: camera-spin 0.95s linear infinite;
+}
+
+@keyframes camera-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 摄像头状态指示 */
+.camera-status {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #f8fbff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.camera-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4CAF50;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+/* 姿态状态显示 */
+.pose-status {
+  position: absolute;
+  bottom: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 12px;
+  background: rgba(12, 18, 38, 0.68);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fbff;
+  white-space: nowrap;
+  max-width: 90%;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 艾莎角色标签 - 冰雪主题 - 左侧 */
+.avatar-label {
+  position: absolute;
+  top: 92px;
+  left: max(22px, env(safe-area-inset-left));
+  background: rgba(12, 18, 38, 0.64);
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0fbff;
+  z-index: 50;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* 映射说明面板 - 已移除，用音乐播放器代替 */
+.mapping-hint {
+  display: none;
+}
+
+.mapping-hint-arrow {
+  font-size: 20px;
+  animation: arrowPulse 1s ease-in-out infinite;
+}
+
+@keyframes arrowPulse {
+  0%, 100% { transform: translateX(0); opacity: 1; }
+  50% { transform: translateX(5px); opacity: 0.7; }
+}

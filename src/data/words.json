@@ -1,0 +1,132 @@
+{
+  "words": [
+    {
+      "id": 1,
+      "word": "sunshine",
+      "meaning": "阳光",
+      "pronunciation": "/ˈsʌnʃaɪn/",
+      "action": "hands_up",
+      "actionDescription": "双手高举过头顶，像太阳一样闪耀！☀️",
+      "encouragement": "太棒了！你就像温暖的阳光！",
+      "difficulty": 1
+    },
+    {
+      "id": 2,
+      "word": "butterfly",
+      "meaning": "蝴蝶",
+      "pronunciation": "/ˈbʌtərflaɪ/",
+      "action": "arms_wave",
+      "actionDescription": "双臂像蝴蝶翅膀一样上下扇动！🦋",
+      "encouragement": "美丽的蝴蝶在飞舞！",
+      "difficulty": 1
+    },
+    {
+      "id": 3,
+      "word": "rainbow",
+      "meaning": "彩虹",
+      "pronunciation": "/ˈreɪnboʊ/",
+      "action": "arms_arc",
+      "actionDescription": "双手从两侧向上画一道弧线！🌈",
+      "encouragement": "哇！你画出了一道彩虹！",
+      "difficulty": 1
+    },
+    {
+      "id": 4,
+      "word": "starlight",
+      "meaning": "星光",
+      "pronunciation": "/ˈstɑːrlaɪt/",
+      "action": "hands_up",
+      "actionDescription": "双手高举，向星星许愿！⭐",
+      "encouragement": "闪闪发光的星星精灵！",
+      "difficulty": 1
+    },
+    {
+      "id": 5,
+      "word": "dancing",
+      "meaning": "跳舞",
+      "pronunciation": "/ˈdænsɪŋ/",
+      "action": "sway",
+      "actionDescription": "左右摇摆身体，跳起舞来！💃",
+      "encouragement": "你的舞姿太优美啦！",
+      "difficulty": 1
+    },
+    {
+      "id": 6,
+      "word": "jumping",
+      "meaning": "跳跃",
+      "pronunciation": "/ˈdʒʌmpɪŋ/",
+      "action": "jump",
+      "actionDescription": "轻轻跳起来！注意安全哦！🐰",
+      "encouragement": "跳得真高！像小兔子一样！",
+      "difficulty": 2
+    },
+    {
+      "id": 7,
+      "word": "mountain",
+      "meaning": "山",
+      "pronunciation": "/ˈmaʊntən/",
+      "action": "arms_triangle",
+      "actionDescription": "双手在头顶合拢，形成山峰的形状！🏔️",
+      "encouragement": "好高的山峰！你做到了！",
+      "difficulty": 1
+    },
+    {
+      "id": 8,
+      "word": "ocean",
+      "meaning": "海洋",
+      "pronunciation": "/ˈoʊʃn/",
+      "action": "wave_motion",
+      "actionDescription": "双臂像海浪一样起伏波动！🌊",
+      "encouragement": "感受到海浪的力量了吗？",
+      "difficulty": 2
+    },
+    {
+      "id": 9,
+      "word": "flower",
+      "meaning": "花朵",
+      "pronunciation": "/ˈflaʊər/",
+      "action": "bloom",
+      "actionDescription": "双手从合拢慢慢打开，像花朵绽放！🌸",
+      "encouragement": "美丽的花朵正在绽放！",
+      "difficulty": 1
+    },
+    {
+      "id": 10,
+      "word": "stretching",
+      "meaning": "伸展",
+      "pronunciation": "/ˈstretʃɪŋ/",
+      "action": "stretch",
+      "actionDescription": "双臂向两侧伸展开来！🌟",
+      "encouragement": "伸展得真好！身体更灵活啦！",
+      "difficulty": 1
+    },
+    {
+      "id": 11,
+      "word": "dreaming",
+      "meaning": "做梦",
+      "pronunciation": "/ˈdriːmɪŋ/",
+      "action": "hands_together",
+      "actionDescription": "双手合十放在脸旁，像在睡觉做美梦！💭",
+      "encouragement": "梦想家！愿你的梦想成真！",
+      "difficulty": 1
+    },
+    {
+      "id": 12,
+      "word": "flying",
+      "meaning": "飞翔",
+      "pronunciation": "/ˈflaɪɪŋ/",
+      "action": "arms_spread",
+      "actionDescription": "双臂展开像飞机一样！✈️",
+      "encouragement": "你在自由飞翔！太酷了！",
+      "difficulty": 1
+    }
+  ],
+  "categories": {
+    "nature": [1, 2, 3, 4, 7, 8, 9],
+    "actions": [5, 6, 10, 11, 12]
+  },
+  "levels": {
+    "beginner": [1, 2, 3, 4, 5, 9, 11, 12],
+    "intermediate": [6, 7, 8, 10]
+  }
+}

@@ -1,0 +1,324 @@
+.game-ui {
+  position: absolute;
+  z-index: 100;
+}
+
+/* 顶部栏 */
+.game-ui.in-game {
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: max(16px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 16px max(22px, env(safe-area-inset-left));
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.game-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(12, 18, 38, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  font-size: clamp(17px, 2.2vw, 24px);
+  font-weight: 850;
+  color: white;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+
+.title-icon {
+  font-size: 28px;
+  animation: sparkle 1.5s infinite;
+}
+
+.exit-btn {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fbff;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+  backdrop-filter: blur(14px);
+}
+
+.exit-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+
+/* 完成界面 */
+.game-ui.completion-screen {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(45, 212, 255, 0.18), transparent 35%),
+    rgba(5, 8, 18, 0.68);
+  backdrop-filter: blur(12px);
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.completion-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 244, 255, 0.92));
+  border-radius: 8px;
+  padding: clamp(26px, 4vw, 40px);
+  max-width: 540px;
+  width: 90%;
+  text-align: center;
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.65);
+  animation: slideUp 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--text-dark);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.completion-stars {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.completion-stars .star {
+  font-size: 40px;
+  animation: starFall 0.5s ease forwards;
+  opacity: 0;
+}
+
+@keyframes starFall {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) rotate(-180deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+
+.completion-title {
+  font-size: clamp(28px, 4vw, 38px);
+  color: var(--text-dark);
+  margin: 0 0 30px 0;
+  text-shadow: none;
+}
+
+.completion-stats {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  min-width: 112px;
+}
+
+.stat-icon {
+  font-size: 28px;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted-dark);
+  margin-top: 5px;
+}
+
+.completion-words {
+  margin-bottom: 30px;
+}
+
+.completion-words h3 {
+  font-size: 16px;
+  color: var(--text-muted-dark);
+  margin: 0 0 15px 0;
+}
+
+.words-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.word-badge {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #2364ff, #8b5cf6);
+  border-radius: 7px;
+  color: white;
+  box-shadow: 0 8px 20px rgba(35, 100, 255, 0.18);
+}
+
+.word-badge .word-en {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.word-badge .word-cn {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.play-again-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 34px;
+  background: linear-gradient(135deg, #ff6fae, #2364ff);
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+  box-shadow: 0 14px 34px rgba(35, 100, 255, 0.26);
+}
+
+.play-again-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px rgba(35, 100, 255, 0.34);
+}
+
+.play-again-btn span {
+  font-size: 22px;
+}
+
+.encouragement {
+  margin: 25px 0 0 0;
+  font-size: 16px;
+  color: var(--text-muted-dark);
+  line-height: 1.6;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .completion-card {
+    padding: 30px 20px;
+  }
+
+  .completion-title {
+    font-size: 28px;
+  }
+
+  .completion-stats {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .stat-item {
+    flex-direction: row;
+    gap: 15px;
+  }
+}
+
+.completion-card.arcade-complete {
+  max-width: 560px;
+}
+
+.arcade-complete-sub {
+  margin: -12px 0 20px;
+  font-size: 15px;
+  color: var(--text-muted-dark);
+}
+
+.completion-stats.arcade-stats-row {
+  flex-wrap: wrap;
+  gap: 14px 18px;
+}
+
+.stat-item.highlight {
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.3), rgba(45, 212, 255, 0.22));
+  border: 1px solid rgba(35, 100, 255, 0.16);
+}
+
+.versus-final {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+@media (max-width: 640px) {
+  .game-ui.in-game {
+    padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+  }
+
+  .game-title {
+    max-width: calc(100vw - 128px);
+    font-size: 15px;
+  }
+
+  .exit-btn {
+    padding: 9px 11px;
+    font-size: 13px;
+  }
+}
+
+.versus-final .vs-dot {
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .completion-stats.arcade-stats-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

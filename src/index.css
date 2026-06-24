@@ -1,0 +1,105 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --macaron-pink: #ff6fae;
+  --macaron-lavender: #8b5cf6;
+  --macaron-mint: #35d6b4;
+  --macaron-peach: #ffb45c;
+  --macaron-sky: #2dd4ff;
+  --macaron-lilac: #a78bfa;
+  --macaron-cream: #fff7d6;
+  --macaron-coral: #ff6b6b;
+  
+  --surface-dark: rgba(12, 18, 38, 0.74);
+  --surface-glass: rgba(255, 255, 255, 0.12);
+  --surface-bright: rgba(255, 255, 255, 0.88);
+  --line-soft: rgba(255, 255, 255, 0.2);
+  --text-primary: #f8fbff;
+  --text-secondary: rgba(226, 232, 240, 0.78);
+  --text-dark: #172033;
+  --text-muted-dark: #64748b;
+  
+  --gold-sparkle: #ffd166;
+  --gold-light: #fff0b8;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 111, 174, 0.42), transparent 28%),
+    radial-gradient(circle at 82% 22%, rgba(45, 212, 255, 0.34), transparent 30%),
+    radial-gradient(circle at 50% 82%, rgba(53, 214, 180, 0.22), transparent 32%),
+    linear-gradient(135deg, #111827 0%, #20203f 44%, #0f2542 100%);
+  background-size: 400% 400%;
+  color: var(--text-primary);
+  animation: gradientShift 18s ease infinite;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 全局动画样式 */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(255, 182, 193, 0.5),
+                0 0 40px rgba(221, 160, 221, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(255, 182, 193, 0.8),
+                0 0 60px rgba(221, 160, 221, 0.5);
+  }
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--macaron-cream);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--macaron-pink), var(--macaron-lilac));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(var(--macaron-coral), var(--macaron-pink));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
