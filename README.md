@@ -39,6 +39,77 @@ npm run dev
 npm run build
 ```
 
+## 🚀 手动部署新手文档
+
+这份文档适合第一次把项目部署到公网的人。当前项目已经配置好了 GitHub Pages 自动部署，但如果你想手动检查、手动发布，按下面步骤来就行。
+
+更完整的公网部署流程放在 [PUBLIC_DEPLOY.md](PUBLIC_DEPLOY.md)，适合第一次上线时一步一步照着做。
+如果你要部署到 Cloudflare Pages，请看 [CLOUDFLARE_PAGES_DEPLOY.md](CLOUDFLARE_PAGES_DEPLOY.md)。
+
+### 方式一：本地先打包，再上传静态文件
+
+1. 在项目根目录打开终端。
+2. 安装依赖：
+
+```bash
+npm install
+```
+
+3. 打包项目：
+
+```bash
+npm run build
+```
+
+4. 打包完成后，会生成 `dist/` 目录。
+5. 把 `dist/` 里的所有文件上传到你的静态服务器，或者把整个 `dist/` 作为网站根目录发布。
+
+### 方式二：用 GitHub Pages 手动发布
+
+如果你已经把代码推到 GitHub，可以按这个流程：
+
+1. 打开仓库。
+2. 确认仓库里有 `.github/workflows/deploy.yml`。
+3. 确认项目根目录的 `vite.config.js` 里已经设置了 `base: './'`。
+4. 确认 `main` 分支代码是最新的。
+5. 在仓库的 `Actions` 页面等待部署完成。
+6. 部署成功后，GitHub Pages 会给出一个公网地址。
+
+### 本地预览
+
+如果你想在部署前先看效果：
+
+```bash
+npm run dev
+```
+
+然后打开终端提示的地址，通常是：
+
+```bash
+http://localhost:5173/
+```
+
+### 常见问题
+
+1. 页面白屏：通常是路径问题，先确认 `vite.config.js` 里有 `base: './'`。
+2. 摄像头没反应：公网访问必须是 `https://`，不能用普通 `http://`。
+3. 部署后资源 404：检查是不是把 `dist/` 里的文件完整上传了，或者 GitHub Pages 是否正确选择了 `GitHub Actions`。
+4. 本地能跑，线上不行：先重新执行 `npm run build`，确认 `dist/` 可以正常生成。
+
+### 适合新手的最短流程
+
+如果你只想记住最少步骤，就用这 4 步：
+
+```bash
+npm install
+npm run build
+git add .
+git commit -m "deploy"
+git push
+```
+
+然后到 GitHub 仓库的 `Actions` 里看部署结果。
+
 ## 🎮 使用说明
 
 1. 打开应用后，允许摄像头访问权限
