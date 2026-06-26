@@ -6,8 +6,9 @@
   bottom: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   z-index: 200;
+  padding: max(16px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom));
   background:
     linear-gradient(180deg, rgba(8, 13, 28, 0.36), rgba(8, 13, 28, 0.84)),
     radial-gradient(circle at 22% 18%, rgba(255, 111, 174, 0.32), transparent 28%),
@@ -16,6 +17,8 @@
   backdrop-filter: blur(16px);
   opacity: 0;
   transition: opacity 0.5s ease;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .loading-screen.show {
@@ -28,6 +31,7 @@
   max-width: 600px;
   position: relative;
   z-index: 1;
+  margin: auto 0;
 }
 
 /* Logo 区域 */
@@ -479,5 +483,34 @@
   
   .mode-cards {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 760px) {
+  .loading-content {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .logo-section {
+    margin-bottom: 10px;
+  }
+
+  .logo-sprite {
+    width: 68px;
+    height: 68px;
+  }
+
+  .sprite-body {
+    width: 56px;
+    height: 56px;
+  }
+
+  .mode-section {
+    margin-top: 14px;
+  }
+
+  .mode-card {
+    min-height: 150px;
   }
 }
