@@ -109,7 +109,7 @@ function LoadingScreen() {
               <span className="mode-icon">🎈</span>
               <span className="mode-title">气球跳跳碰（全屏摄像头）</span>
               <span className="mode-desc">
-                实时画面上叠加火柴人骨架与单词气球下落，从词池中随机抽取 60 词。双人时左右手分别代表
+                实时画面上叠加火柴人骨架与单词气球下落，从词池中随机抽取 60 词。双人时画面左右两侧分别代表
                 P1 / P2（单摄像头）。
               </span>
               <div className="versus-actions">
@@ -139,7 +139,7 @@ function LoadingScreen() {
               <span className="mode-icon">🍉</span>
               <span className="mode-title">单词切水果</span>
               <span className="mode-desc">
-                水果接住单词落下来，同样从词池抽取 60 词。双人赛：左手为 P1、右手为
+                全屏摄像头上切开落下的水果单词，同样从词池抽取 60 词。双人赛：画面左侧为 P1、右侧为
                 P2（单摄像头）。
               </span>
               <div className="versus-actions">

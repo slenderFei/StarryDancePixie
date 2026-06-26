@@ -1,5 +1,22 @@
 // 音效工具函数 - 自然的鼓励语音
 
+let sharedAudioContext = null
+
+function getSharedAudioContext() {
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextCtor) return null
+
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioContextCtor()
+  }
+
+  if (sharedAudioContext.state === 'suspended') {
+    sharedAudioContext.resume().catch(() => {})
+  }
+
+  return sharedAudioContext
+}
+
 // 鼓励语列表（根据情绪和状态）
 const ENCOURAGEMENTS = {
   // 基础鼓励（第一次做对）
@@ -283,7 +300,8 @@ export function playEncouragementSound(streak = 1, completedWords = 0, totalWord
 // 播放成功音效（使用音频上下文生成简单的音调）
 export function playSuccessTone(streak = 1) {
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    const audioContext = getSharedAudioContext()
+    if (!audioContext) return
     
     // 根据连击数调整音调
     let baseFreq = 523.25 // C5

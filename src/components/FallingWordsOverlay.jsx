@@ -19,18 +19,20 @@ const FRUIT_SPRITES = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍉', '🍑', '
 
 const VIS_MIN = 0.45
 
-/** 气球：同屏更多、节奏更快；水果保持原节奏 */
-const BALLOON_MAX_AIRBORNE = 9
-const FRUIT_MAX_AIRBORNE = 6
+/** 气球同屏适中防卡顿；水果用更快节奏，避免长时间无新目标 */
+const BALLOON_MAX_AIRBORNE = 7
+const FRUIT_MAX_AIRBORNE = 7
 
 const BALLOON_SPAWN_GAP_MIN = 950
 const BALLOON_SPAWN_GAP_EXTRA = 750
-const FRUIT_SPAWN_GAP_MIN = 400
-const FRUIT_SPAWN_GAP_EXTRA = 560
+const FRUIT_SPAWN_GAP_MIN = 650
+const FRUIT_SPAWN_GAP_EXTRA = 520
 
-/** 气球约 14–18s 落穿一屏；水果略快 */
+/** 气球约 14–18s 落穿一屏；水果约 8–12s，更像切水果节奏 */
 const BALLOON_FALL_CROSS_MS = 15500
-const FRUIT_FALL_CROSS_MS = 22000
+const FRUIT_FALL_CROSS_MS = 9000
+const ARCADE_HIT_COOLDOWN_MS = 240
+const ARCADE_SPEECH_GAP_MS = 720
 
 /** 气球造型：颜色 / 形状各异 */
 const BALLOON_VARIANTS = [
@@ -103,23 +105,15 @@ function nearestHitPlayer(
   }
 
   let best = null
-  for (const idx of LEFT_BODY) {
+  for (const idx of [...LEFT_BODY, ...RIGHT_BODY]) {
     const p = landmarks[idx]
     if (!p || (p.visibility != null && p.visibility < VIS_MIN)) continue
     const { x, y } = toPx(p)
     const d2 = (x - cx) ** 2 + (y - cy) ** 2
     if (d2 > hitR2) continue
-    if (!best || d2 < best.d2) best = { player: 'p1', d2 }
+    if (!best || d2 < best.d2) best = { x, d2 }
   }
-  for (const idx of RIGHT_BODY) {
-    const p = landmarks[idx]
-    if (!p || (p.visibility != null && p.visibility < VIS_MIN)) continue
-    const { x, y } = toPx(p)
-    const d2 = (x - cx) ** 2 + (y - cy) ** 2
-    if (d2 > hitR2) continue
-    if (!best || d2 < best.d2) best = { player: 'p2', d2 }
-  }
-  return best ? best.player : ''
+  return best ? (best.x < vw / 2 ? 'p1' : 'p2') : ''
 }
 
 
@@ -135,6 +129,9 @@ function FallingWordsOverlay() {
   const itemElsRef = useRef(new Map())
   const nextSpawnAtRef = useRef(0)
   const spawnedCountRef = useRef(0)
+  const hitClockRef = useRef({ hit: -Infinity, p1: -Infinity, p2: -Infinity })
+  const lastSpeechAtRef = useRef(-Infinity)
+  const popTimeoutsRef = useRef(new Set())
   const [renderItems, setRenderItems] = useState([])
   const [hudStats, setHudStats] = useState({
     popped: 0,
@@ -154,6 +151,11 @@ function FallingWordsOverlay() {
   const isBalloon = playMode === 'balloon'
   const sessionTotal = arcadeSessionWords.length
 
+  const clearPopTimeouts = useCallback(() => {
+    popTimeoutsRef.current.forEach((timerId) => clearTimeout(timerId))
+    popTimeoutsRef.current.clear()
+  }, [])
+
   const commitItems = useCallback(() => {
     setRenderItems([...itemsRef.current])
   }, [])
@@ -169,10 +171,13 @@ function FallingWordsOverlay() {
   }, [])
 
   useEffect(() => {
+    clearPopTimeouts()
     queueRef.current = [...arcadeSessionWords]
     itemsRef.current = []
     itemElsRef.current.clear()
     spawnedCountRef.current = 0
+    hitClockRef.current = { hit: -Infinity, p1: -Infinity, p2: -Infinity }
+    lastSpeechAtRef.current = -Infinity
     nextSpawnAtRef.current = performance.now() + (playMode === 'balloon' ? 280 : 400)
     statsRef.current = {
       popped: 0,
@@ -188,7 +193,7 @@ function FallingWordsOverlay() {
       p1Hits: 0,
       p2Hits: 0,
     })
-  }, [arcadeSessionWords, gameState, playMode])
+  }, [arcadeSessionWords, gameState, playMode, clearPopTimeouts])
 
   const endRun = useCallback(() => {
     const s = statsRef.current
@@ -284,7 +289,7 @@ function FallingWordsOverlay() {
 
       const gs = useGameStore.getState()
       const landmarks = getLatestPose()
-      const balloonCoverHits = gs.playMode === 'balloon'
+      const useCoverHits = gs.playMode === 'balloon' || gs.playMode === 'fruit'
       const iw = gs.poseVideoIntrinsics?.width ?? 0
       const ih = gs.poseVideoIntrinsics?.height ?? 0
 
@@ -293,7 +298,7 @@ function FallingWordsOverlay() {
       const vw = innerWidth || 390
       const vh = innerHeight || 820
       const minVH = Math.min(vw, vh)
-      const hitR = minVH * 0.09
+      const hitR = minVH * (gs.playMode === 'fruit' ? 0.12 : 0.1)
       const hitR2 = hitR * hitR
       const cxOffset = isBalloon ? 59 : 60
       const cyOffset = isBalloon ? 70 : 59
@@ -326,11 +331,14 @@ function FallingWordsOverlay() {
             gs.arcadeVersus,
             vw,
             vh,
-            balloonCoverHits,
+            useCoverHits,
             iw,
             ih,
           )
-          if (who) {
+          const hitKey = gs.arcadeVersus ? who : 'hit'
+          const enoughGap = who && now - (hitClockRef.current[hitKey] ?? -Infinity) >= ARCADE_HIT_COOLDOWN_MS
+          if (who && enoughGap) {
+            hitClockRef.current[hitKey] = now
             it.popping = true
             const w = it.word
             statsRef.current.popped += 1
@@ -342,16 +350,21 @@ function FallingWordsOverlay() {
             }
 
             playSuccessTone(Math.min(4, 1 + (statsRef.current.popped % 5)))
-            playWordPronunciation(w.word)
+            if (now - lastSpeechAtRef.current >= ARCADE_SPEECH_GAP_MS) {
+              lastSpeechAtRef.current = now
+              playWordPronunciation(w.word)
+            }
             commitHudStats()
 
             const el = itemElsRef.current.get(it.id)
             if (el) el.classList.add('popping')
 
-            setTimeout(() => {
+            const popTimer = setTimeout(() => {
+              popTimeoutsRef.current.delete(popTimer)
               it.done = true
               commitItems()
             }, 300)
+            popTimeoutsRef.current.add(popTimer)
           }
         }
 
@@ -379,7 +392,10 @@ function FallingWordsOverlay() {
     }
 
     raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearPopTimeouts()
+    }
   }, [
     gameState,
     arcadeVersus,
@@ -390,6 +406,7 @@ function FallingWordsOverlay() {
     applyItemTransform,
     commitItems,
     commitHudStats,
+    clearPopTimeouts,
   ])
 
   if (gameState !== 'arcade_playing') return null
@@ -401,9 +418,9 @@ function FallingWordsOverlay() {
   if (arcadeVersus) {
     hudVersus = (
       <div className="versus-stats">
-        <span title="左手手腕/手肘击中">🔵 P1 · {st.p1Hits}</span>
+        <span title="画面左侧玩家击中">🔵 P1 · {st.p1Hits}</span>
         <span>|</span>
-        <span title="右手手腕/手肘击中">🔴 P2 · {st.p2Hits}</span>
+        <span title="画面右侧玩家击中">🔴 P2 · {st.p2Hits}</span>
         <span>|</span>
         <span>漏接 {st.missed}</span>
       </div>
@@ -429,7 +446,7 @@ function FallingWordsOverlay() {
           : arcadeVersus
             ? '🍉 单词切水果 · 双人'
             : '🍉 单词切水果'}
-        {arcadeVersus && <span>左手腕/肘=P1｜右手腕/肘=P2</span>}
+        {arcadeVersus && <span>画面左侧=P1｜画面右侧=P2</span>}
         {hudVersus}
       </div>
 

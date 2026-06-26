@@ -53,6 +53,10 @@ const KEY_BODY_POINTS = [
 
 const POSE_PUBLISH_INTERVAL_MS = 90
 
+function isArcadeMode(gameState, playMode) {
+  return gameState === 'arcade_playing' && (playMode === 'balloon' || playMode === 'fruit')
+}
+
 function drawSkeletonMini(ctx, landmarks, width, height) {
   ctx.lineWidth = 3
   ctx.lineCap = 'round'
@@ -190,7 +194,7 @@ function PoseDetector() {
   const completeAction = useGameStore((s) => s.completeAction)
   const triggerStarEffect = useGameStore((s) => s.triggerStarEffect)
 
-  const balloonFullscreen = gameState === 'arcade_playing' && playMode === 'balloon'
+  const arcadeFullscreen = isArcadeMode(gameState, playMode)
 
   const updatePoseStatus = useCallback((message) => {
     if (poseStatusRef.current === message) return
@@ -203,7 +207,7 @@ function PoseDetector() {
     if (!canvas) return undefined
 
     const applySize = () => {
-      if (balloonFullscreen) {
+      if (arcadeFullscreen) {
         const rawDpr = window.devicePixelRatio || 1
         const dpr = Math.min(rawDpr, 1.85)
         const w = window.innerWidth
@@ -222,24 +226,24 @@ function PoseDetector() {
 
     applySize()
 
-    if (balloonFullscreen) {
+    if (arcadeFullscreen) {
       window.addEventListener('resize', applySize)
       return () => window.removeEventListener('resize', applySize)
     }
     return undefined
-  }, [balloonFullscreen])
+  }, [arcadeFullscreen])
 
-  /** 气球全屏：轻量 BlazePose，降低发热与卡顿 */
+  /** 街机全屏：轻量 BlazePose，降低发热与卡顿 */
   useEffect(() => {
     poseRef.current?.setOptions({
-      modelComplexity: balloonFullscreen ? 0 : 1,
+      modelComplexity: arcadeFullscreen ? 0 : 1,
       smoothLandmarks: true,
       enableSegmentation: false,
       smoothSegmentation: false,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     })
-  }, [balloonFullscreen])
+  }, [arcadeFullscreen])
 
   const checkAction = useCallback((landmarks, requiredAction) => {
     if (!landmarks || landmarks.length === 0) return false
@@ -325,15 +329,14 @@ function PoseDetector() {
       if (!canvas || !ctx) return
 
       const gs = useGameStore.getState()
-      const fullBalloon =
-        gs.gameState === 'arcade_playing' && gs.playMode === 'balloon'
+      const fullArcade = isArcadeMode(gs.gameState, gs.playMode)
       const { width: iw, height: ih } = gs.poseVideoIntrinsics || { width: 0, height: 0 }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       const rawDpr = window.devicePixelRatio || 1
-      const drawDpr = fullBalloon ? Math.min(rawDpr, 1.85) : 1
-      ctx.setTransform(fullBalloon ? drawDpr : 1, 0, 0, fullBalloon ? drawDpr : 1, 0, 0)
+      const drawDpr = fullArcade ? Math.min(rawDpr, 1.85) : 1
+      ctx.setTransform(fullArcade ? drawDpr : 1, 0, 0, fullArcade ? drawDpr : 1, 0, 0)
 
       if (results.poseLandmarks && results.poseLandmarks.length > 0) {
         const landmarks = results.poseLandmarks
@@ -349,7 +352,7 @@ function PoseDetector() {
         const vw = rect.width
         const vh = rect.height
 
-        if (fullBalloon && vw > 0 && vh > 0) {
+        if (fullArcade && vw > 0 && vh > 0) {
           drawSkeletonCoverOnMirroredCanvas(ctx, landmarks, vw, vh, iw, ih)
         } else {
           drawSkeletonMini(ctx, landmarks, canvas.width, canvas.height)
@@ -357,9 +360,13 @@ function PoseDetector() {
 
         if (gs.gameState === 'arcade_playing') {
           if (gs.playMode === 'fruit') {
-            updatePoseStatus('🍉 用双手「切开」落下的水果单词！')
+            updatePoseStatus(
+              gs.arcadeVersus
+                ? '🍉 双人：画面左侧=P1｜画面右侧=P2 · 挥手切水果'
+                : '🍉 挥动手臂或伸手切开水果单词！',
+            )
           } else if (gs.arcadeVersus) {
-            updatePoseStatus('🎈 双人：左手腕/肘=P1｜右手腕/肘=P2 · 击中气球朗读单词')
+            updatePoseStatus('🎈 双人：画面左侧=P1｜画面右侧=P2 · 击中气球朗读单词')
           } else {
             updatePoseStatus('🎈 挥动手臂或伸手顶破气球，朗读气球上的单词')
           }
@@ -516,7 +523,7 @@ function PoseDetector() {
     }
   }, [onResults, setCameraReady, setPoseVideoIntrinsics])
 
-  const wrapperClass = balloonFullscreen ? 'pose-balloon-fullscreen' : 'pose-detector-container'
+  const wrapperClass = arcadeFullscreen ? 'pose-arcade-fullscreen' : 'pose-detector-container'
 
   return (
     <div className={wrapperClass}>
@@ -542,7 +549,7 @@ function PoseDetector() {
             background: isLoading ? '#FFA500' : '#4CAF50',
           }}
         />
-        <span>{isLoading ? '加载中' : balloonFullscreen ? '全屏体感' : '已连接'}</span>
+        <span>{isLoading ? '加载中' : arcadeFullscreen ? '全屏体感' : '已连接'}</span>
       </div>
 
       {poseStatus && <div className="pose-status">{poseStatus}</div>}

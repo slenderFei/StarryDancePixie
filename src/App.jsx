@@ -24,8 +24,8 @@ function App() {
     gameState === 'action_success'
   const isArcadePlaying = gameState === 'arcade_playing'
   const isPlaying = isClassicPlaying || isArcadePlaying
-  const hideCanvasForBalloon = isArcadePlaying && playMode === 'balloon'
-  const shouldRenderCanvas = isPlaying && !hideCanvasForBalloon
+  const hideCanvasForArcade = isArcadePlaying && (playMode === 'balloon' || playMode === 'fruit')
+  const shouldRenderCanvas = isPlaying && !hideCanvasForArcade
   
   // 初始化语音合成（某些浏览器需要）
   useEffect(() => {
@@ -70,7 +70,7 @@ function App() {
         <PoseDetector />
       </Suspense>
 
-      {/* 街机图层：盖住全屏实况，夹在摄像头层与顶部 GameUI(z100) 之间 */}
+      {/* 街机图层：盖住全屏实况，夹在摄像头层与顶部 GameUI 之间 */}
       {isArcadePlaying && (
         <Suspense fallback={null}>
           <FallingWordsOverlay />
