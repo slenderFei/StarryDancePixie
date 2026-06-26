@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import useGameStore from '../store/gameStore'
 import './GameUI.css'
 
@@ -19,6 +19,26 @@ function GameUI() {
   const arcadeResult = useGameStore((s) => s.arcadeResult)
   const playMode = useGameStore((s) => s.playMode)
   const arcadeVersus = useGameStore((s) => s.arcadeVersus)
+  const canExit =
+    gameState === 'learning' ||
+    gameState === 'action_pending' ||
+    gameState === 'action_success' ||
+    gameState === 'arcade_playing' ||
+    gameState === 'completed'
+
+  useEffect(() => {
+    if (!canExit) return undefined
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        resetGame()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [canExit, resetGame])
+
   if (gameState === 'completed' && arcadeResult) {
     const r = arcadeResult
     const versus = !!(r.arcadeVersus ?? r.fruitVersus)

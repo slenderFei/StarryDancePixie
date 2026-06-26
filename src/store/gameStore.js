@@ -189,7 +189,8 @@ const useGameStore = create((set, get) => ({
     }
   },
 
-  resetGame: () =>
+  resetGame: () => {
+    latestPose = null
     set({
       gameState: 'idle',
       playMode: 'classic',
@@ -204,7 +205,10 @@ const useGameStore = create((set, get) => ({
       showStarEffect: false,
       showSuccessAnimation: false,
       lastEncouragementInfo: null,
-    }),
+      currentPose: null,
+      poseDetected: false,
+    })
+  },
 
   triggerStarEffect: () => {
     set({ showStarEffect: true })

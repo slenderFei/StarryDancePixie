@@ -438,6 +438,7 @@ function FallingWordsOverlay() {
           ? ['balloon-shape', it.balloonVariant?.className ?? 'balloon-candy'].join(' ')
           : 'fruit-shape'
         const scale = isBalloon ? it.sizeScale ?? 1 : 1
+        const halfW = isBalloon ? 59 : 60
         const halfScaled = halfW * scale
 
         return (
