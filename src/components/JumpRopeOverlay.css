@@ -54,6 +54,7 @@
 
 .jump-rope-meter span,
 .jump-rope-count span,
+.jump-rope-meter em,
 .jump-rope-count em {
   color: rgba(226, 232, 240, 0.75);
   font-style: normal;
@@ -213,14 +214,49 @@
   .jump-rope-board {
     left: max(12px, env(safe-area-inset-left));
     right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    top: max(190px, calc(env(safe-area-inset-top, 0px) + 176px));
+    bottom: auto;
     width: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 9px;
   }
 
   .jump-rope-board h3,
   .jump-rope-empty {
     grid-column: 1 / -1;
+  }
+
+  .jump-rope-board h3 {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .jump-rope-rank {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 5px;
+    min-height: 28px;
+    padding: 5px 6px;
+  }
+
+  .jump-rope-rank:nth-of-type(n + 5) {
+    display: none;
+  }
+
+  .jump-rope-rank span {
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+  }
+
+  .jump-rope-rank strong {
+    font-size: 12px;
+  }
+
+  .jump-rope-rank em {
+    grid-column: 1 / -1;
+    justify-self: center;
+    font-size: 12px;
   }
 
   .jump-rope-ready {

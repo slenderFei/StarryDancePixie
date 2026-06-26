@@ -19,11 +19,14 @@ const POSE_LM = {
 const ROUND_MS = 60_000
 const COUNTDOWN_MS = 3000
 const CALIBRATION_SAMPLE_COUNT = 24
+const CALIBRATION_SAMPLE_INTERVAL_MS = 70
 const AIR_THRESHOLD_RATIO = 0.058
 const HIP_THRESHOLD_RATIO = 0.025
 const MIN_VISIBLE_POINTS = 4
 const MIN_JUMP_GAP_MS = 300
 const MAX_JUMP_GAP_MS = 1600
+const MIN_AIRBORNE_MS = 80
+const MAX_AIRBORNE_MS = 950
 const POSE_LOST_RESET_MS = 360
 const RESUME_SETTLE_MS = 420
 
@@ -35,6 +38,12 @@ function median(values) {
   if (!values.length) return 0
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.floor(sorted.length / 2)]
+}
+
+function medianDeviation(values) {
+  if (!values.length) return 0
+  const center = median(values)
+  return median(values.map((value) => Math.abs(value - center)))
 }
 
 function visible(point, min = 0.42) {
@@ -81,6 +90,8 @@ function JumpRopeOverlay() {
     phase: 'calibrating',
     countdown: 3,
     quality: 0,
+    calibrationProgress: 0,
+    bestScore: 0,
     calibrated: false,
     leaderboard: [],
   })
@@ -109,6 +120,8 @@ function JumpRopeOverlay() {
       phase: s.phase,
       countdown: s.countdown,
       quality: s.quality,
+      calibrationProgress: s.calibrationProgress,
+      bestScore: Math.max(s.bestScore, s.count),
       calibrated: s.calibrated,
       leaderboard: s.leaderboard,
     })
@@ -196,9 +209,14 @@ function JumpRopeOverlay() {
 
     if (foot) {
       const lift = Math.max(0, groundY - foot.y)
-      ctx.fillStyle = s.inAir ? 'rgba(250, 204, 21, 0.92)' : 'rgba(45, 212, 255, 0.84)'
+      const flash = now < (s.jumpFlashUntil || 0)
+      ctx.fillStyle = flash
+        ? 'rgba(52, 211, 153, 0.94)'
+        : s.inAir
+          ? 'rgba(250, 204, 21, 0.92)'
+          : 'rgba(45, 212, 255, 0.84)'
       ctx.beginPath()
-      ctx.arc(foot.x, foot.y, 12 + Math.min(10, lift * 0.08), 0, Math.PI * 2)
+      ctx.arc(foot.x, foot.y, 12 + Math.min(12, lift * 0.09), 0, Math.PI * 2)
       ctx.fill()
     }
   }, [])
@@ -222,6 +240,7 @@ function JumpRopeOverlay() {
   }, [finishArcade])
 
   useEffect(() => {
+    const leaderboard = getJumpRopeLeaderboard(5)
     stateRef.current = {
       mountedAt: performance.now(),
       roundStartedAt: 0,
@@ -238,16 +257,22 @@ function JumpRopeOverlay() {
       countdownStartedAt: 0,
       missingSince: 0,
       ignoreUntil: 0,
+      lastCalibrationSampleAt: 0,
       calibrated: false,
       phase: 'calibrating',
       countdown: 3,
       quality: 0,
+      calibrationProgress: 0,
+      bestScore: leaderboard[0]?.jumpCount || 0,
       count: 0,
       inAir: false,
+      airborneStartedAt: 0,
+      jumpPeakLift: 0,
+      jumpPeakHipLift: 0,
       lastJumpAt: -Infinity,
       lastPublishAt: 0,
       status: '校准中',
-      leaderboard: getJumpRopeLeaderboard(5),
+      leaderboard,
       finished: false,
     }
     resizeCanvas()
@@ -310,6 +335,7 @@ function JumpRopeOverlay() {
         s.status = visibleCount >= 4 ? '下半身再入镜' : '请全身入镜'
         if (!s.calibrated) {
           s.baselineSamples = []
+          s.calibrationProgress = 0
           s.phase = 'calibrating'
         } else if (!s.roundStartedAt) {
           s.phase = 'countdown'
@@ -320,20 +346,41 @@ function JumpRopeOverlay() {
         }
       } else if (!s.calibrated) {
         const bodyHeight = clamp(foot.y - shoulder.y, vh * 0.28, vh * 0.82)
-        s.baselineSamples.push({ footY: foot.y, hipY: hip.y, bodyHeight })
-        if (s.baselineSamples.length > CALIBRATION_SAMPLE_COUNT * 2) {
-          s.baselineSamples.shift()
+        if (now - s.lastCalibrationSampleAt >= CALIBRATION_SAMPLE_INTERVAL_MS) {
+          s.lastCalibrationSampleAt = now
+          s.baselineSamples.push({ footY: foot.y, hipY: hip.y, bodyHeight })
+          if (s.baselineSamples.length > CALIBRATION_SAMPLE_COUNT * 2) {
+            s.baselineSamples.shift()
+          }
         }
+        const readySamples = s.baselineSamples.slice(-CALIBRATION_SAMPLE_COUNT)
+        const sampleCount = Math.min(CALIBRATION_SAMPLE_COUNT, readySamples.length)
+        const sampledBodyHeight = median(readySamples.map((sample) => sample.bodyHeight))
+        const footJitter = medianDeviation(readySamples.map((sample) => sample.footY))
+        const hipJitter = medianDeviation(readySamples.map((sample) => sample.hipY))
+        const jitterLimit = clamp(sampledBodyHeight * 0.026, 10, 28)
+        const stableEnough =
+          sampleCount >= CALIBRATION_SAMPLE_COUNT &&
+          footJitter <= jitterLimit &&
+          hipJitter <= jitterLimit
         s.phase = 'calibrating'
-        s.status = `站稳 ${Math.min(CALIBRATION_SAMPLE_COUNT, s.baselineSamples.length)}/${CALIBRATION_SAMPLE_COUNT}`
-        if (s.baselineSamples.length >= CALIBRATION_SAMPLE_COUNT) {
-          s.baselineY = median(s.baselineSamples.map((sample) => sample.footY))
-          s.baselineHipY = median(s.baselineSamples.map((sample) => sample.hipY))
-          s.bodyHeight = median(s.baselineSamples.map((sample) => sample.bodyHeight))
+        s.calibrationProgress = stableEnough
+          ? 100
+          : Math.min(99, Math.round((sampleCount / CALIBRATION_SAMPLE_COUNT) * 100))
+        s.status =
+          sampleCount < CALIBRATION_SAMPLE_COUNT
+            ? `站稳 ${sampleCount}/${CALIBRATION_SAMPLE_COUNT}`
+            : '保持站稳'
+        if (stableEnough) {
+          s.baselineY = median(readySamples.map((sample) => sample.footY))
+          s.baselineHipY = median(readySamples.map((sample) => sample.hipY))
+          s.bodyHeight = sampledBodyHeight
           s.airThresholdPx = clamp(s.bodyHeight * AIR_THRESHOLD_RATIO, 28, 62)
           s.landingThresholdPx = clamp(s.airThresholdPx * 0.42, 10, 26)
           s.hipThresholdPx = clamp(s.bodyHeight * HIP_THRESHOLD_RATIO, 10, 30)
           s.hipLandingThresholdPx = clamp(s.hipThresholdPx * 0.42, 5, 14)
+          s.smoothedFootY = s.baselineY
+          s.smoothedHipY = s.baselineHipY
           s.calibrated = true
           s.countdownStartedAt = now
           s.phase = 'countdown'
@@ -347,6 +394,15 @@ function JumpRopeOverlay() {
         if (countdownLeft <= 0) {
           s.roundStartedAt = now
           s.phase = 'active'
+          s.baselineY = foot.y
+          s.baselineHipY = hip.y
+          s.smoothedFootY = foot.y
+          s.smoothedHipY = hip.y
+          s.inAir = false
+          s.airborneStartedAt = 0
+          s.jumpPeakLift = 0
+          s.jumpPeakHipLift = 0
+          s.lastJumpAt = now - MIN_JUMP_GAP_MS
           s.status = '开始'
         }
       } else {
@@ -364,24 +420,58 @@ function JumpRopeOverlay() {
 
         if (now < (s.ignoreUntil || 0)) {
           s.inAir = false
+          s.airborneStartedAt = 0
+          s.jumpPeakLift = 0
+          s.jumpPeakHipLift = 0
           s.status = '重新就位'
-        } else if (!s.inAir && isAirborne) {
+        } else if (!s.inAir && isAirborne && gap >= MIN_JUMP_GAP_MS) {
           s.inAir = true
+          s.airborneStartedAt = now
+          s.jumpPeakLift = Math.max(0, lift)
+          s.jumpPeakHipLift = Math.max(0, hipLift)
           s.status = '跳起'
         }
 
-        if (now >= (s.ignoreUntil || 0) && s.inAir && gap > MAX_JUMP_GAP_MS && lift < s.airThresholdPx * 0.65) {
+        if (s.inAir) {
+          s.jumpPeakLift = Math.max(s.jumpPeakLift, lift)
+          s.jumpPeakHipLift = Math.max(s.jumpPeakHipLift, hipLift)
+        }
+
+        const airborneMs = s.inAir ? now - s.airborneStartedAt : 0
+        if (
+          now >= (s.ignoreUntil || 0) &&
+          s.inAir &&
+          (airborneMs > MAX_AIRBORNE_MS ||
+            (gap > MAX_JUMP_GAP_MS && lift < s.airThresholdPx * 0.65))
+        ) {
           s.inAir = false
+          s.airborneStartedAt = 0
+          s.jumpPeakLift = 0
+          s.jumpPeakHipLift = 0
           s.status = '调整节奏'
         }
 
         if (now >= (s.ignoreUntil || 0) && s.inAir && isLanded && gap >= MIN_JUMP_GAP_MS) {
+          const enoughAirTime = airborneMs >= MIN_AIRBORNE_MS && airborneMs <= MAX_AIRBORNE_MS
+          const enoughLift =
+            s.jumpPeakLift >= s.airThresholdPx &&
+            (s.jumpPeakHipLift >= s.hipThresholdPx * 0.72 ||
+              s.jumpPeakLift >= s.airThresholdPx * 1.32)
           s.inAir = false
-          s.lastJumpAt = now
-          s.count += 1
-          s.statusHoldUntil = now + 360
-          s.status = '计数 +1'
-          playSuccessTone(Math.min(5, 1 + (s.count % 5)))
+          s.airborneStartedAt = 0
+          if (enoughAirTime && enoughLift) {
+            s.lastJumpAt = now
+            s.count += 1
+            s.statusHoldUntil = now + 420
+            s.jumpFlashUntil = now + 240
+            s.status = '计数 +1'
+            playSuccessTone(Math.min(5, 1 + (s.count % 5)))
+          } else {
+            s.statusHoldUntil = now + 320
+            s.status = '再跳高一点'
+          }
+          s.jumpPeakLift = 0
+          s.jumpPeakHipLift = 0
         } else if (!s.inAir && now > (s.statusHoldUntil || 0)) {
           s.status = '准备'
         }
@@ -432,13 +522,14 @@ function JumpRopeOverlay() {
         <div className="jump-rope-meter">
           <span>入镜</span>
           <strong>{ui.quality}%</strong>
+          <em>最佳 {ui.bestScore}</em>
         </div>
       </section>
 
       {ui.phase !== 'active' && (
         <div className={`jump-rope-ready jump-rope-ready-${ui.phase}`}>
           <span>{ui.phase === 'calibrating' ? '站稳校准' : '准备'}</span>
-          <strong>{ui.phase === 'calibrating' ? `${ui.quality}%` : ui.countdown}</strong>
+          <strong>{ui.phase === 'calibrating' ? `${ui.calibrationProgress}%` : ui.countdown}</strong>
         </div>
       )}
 
