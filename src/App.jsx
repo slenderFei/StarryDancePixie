@@ -1,9 +1,12 @@
-import React, { lazy, useEffect, Suspense, useRef } from 'react'
+import React, { lazy, useEffect, Suspense, useRef, useState } from 'react'
 import WordPanel from './components/WordPanel'
 import GameUI from './components/GameUI'
 import LoadingScreen from './components/LoadingScreen'
 import BackgroundMusic from './components/BackgroundMusic'
+import LoginScreen from './components/LoginScreen'
+import AdminDashboard from './components/AdminDashboard'
 import useGameStore from './store/gameStore'
+import { getSession, isRootSession } from './utils/auth'
 import { initSpeechSynthesis } from './utils/soundEffects'
 import './App.css'
 
@@ -15,6 +18,9 @@ function App() {
   const gameState = useGameStore((s) => s.gameState)
   const playMode = useGameStore((s) => s.playMode)
   const setMousePosition = useGameStore((s) => s.setMousePosition)
+  const resetGame = useGameStore((s) => s.resetGame)
+  const [session, setSession] = useState(() => getSession())
+  const [view, setView] = useState(() => (isRootSession(getSession()) ? 'admin' : 'game'))
   const mouseFrameRef = useRef(null)
   const mousePointRef = useRef({ x: 0, y: 0 })
 
@@ -31,6 +37,18 @@ function App() {
   useEffect(() => {
     initSpeechSynthesis()
   }, [])
+
+  const handleLogin = (nextSession) => {
+    setSession(nextSession)
+    setView(isRootSession(nextSession) ? 'admin' : 'game')
+  }
+
+  const handleSessionChange = () => {
+    resetGame()
+    const nextSession = getSession()
+    setSession(nextSession)
+    setView(isRootSession(nextSession) ? 'admin' : 'game')
+  }
   
   // 追踪鼠标位置
   useEffect(() => {
@@ -56,6 +74,14 @@ function App() {
     }
   }, [setMousePosition])
   
+  if (!session) {
+    return <LoginScreen onLogin={handleLogin} />
+  }
+
+  if (view === 'admin') {
+    return <AdminDashboard onExit={() => setView('game')} onSessionChange={handleSessionChange} />
+  }
+
   return (
     <div className="app-container">
       {/* 3D 场景 */}
@@ -78,7 +104,11 @@ function App() {
       )}
 
       {/* 游戏 UI */}
-      <GameUI />
+      <GameUI
+        session={session}
+        onOpenAdmin={() => setView('admin')}
+        onSessionChange={handleSessionChange}
+      />
       
       {/* 单词面板 - 右侧 */}
       {isClassicPlaying && <WordPanel />}

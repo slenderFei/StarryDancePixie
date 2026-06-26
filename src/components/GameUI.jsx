@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import useGameStore from '../store/gameStore'
+import { isRootSession, logout } from '../utils/auth'
 import './GameUI.css'
 
 function modeTitle(playMode, arcadeVersus) {
@@ -10,7 +11,7 @@ function modeTitle(playMode, arcadeVersus) {
   return '星光词汇挑战'
 }
 
-function GameUI() {
+function GameUI({ session, onOpenAdmin, onSessionChange }) {
   const gameState = useGameStore((s) => s.gameState)
   const score = useGameStore((s) => s.score)
   const completedWords = useGameStore((s) => s.completedWords)
@@ -39,6 +40,25 @@ function GameUI() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [canExit, resetGame])
 
+  const handleLogout = () => {
+    logout()
+    onSessionChange()
+  }
+
+  const accountActions = (
+    <div className="account-actions">
+      <span>{session?.username}</span>
+      {isRootSession(session) && (
+        <button type="button" onClick={onOpenAdmin}>
+          后台
+        </button>
+      )}
+      <button type="button" onClick={handleLogout}>
+        退出
+      </button>
+    </div>
+  )
+
   if (gameState === 'completed' && arcadeResult) {
     const r = arcadeResult
     const versus = !!(r.arcadeVersus ?? r.fruitVersus)
@@ -47,6 +67,7 @@ function GameUI() {
 
     return (
       <div className="game-ui completion-screen">
+        {accountActions}
         <div className="completion-card arcade-complete">
           <h1 className="completion-title">🎯 一局结束啦！</h1>
           <p className="arcade-complete-sub">{modeTitle(r.playMode, versus)}</p>
@@ -117,6 +138,7 @@ function GameUI() {
 
     return (
       <div className="game-ui completion-screen">
+        {accountActions}
         <div className="completion-card">
           <div className="completion-stars">
             {[...Array(5)].map((_, i) => (
@@ -189,12 +211,13 @@ function GameUI() {
           <button type="button" className="exit-btn" onClick={resetGame}>
             返回首页
           </button>
+          {accountActions}
         </div>
       </div>
     )
   }
 
-  return null
+  return <div className="game-ui account-only">{accountActions}</div>
 }
 
 export default GameUI

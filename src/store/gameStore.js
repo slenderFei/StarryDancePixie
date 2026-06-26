@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import wordsData from '../data/words.json'
 import grade5bData from '../data/words_grade5b.json'
 import { playEncouragementSound, playSuccessTone, playWordPronunciation } from '../utils/soundEffects'
+import { getSession } from '../utils/auth'
+import { saveGameRecord } from '../utils/gameRecords'
 
 function shuffleWords(arr) {
   const a = [...arr]
@@ -112,10 +114,33 @@ const useGameStore = create((set, get) => ({
   },
 
   finishArcade: (result) => {
-    if (get().gameState !== 'arcade_playing') return
+    const state = get()
+    if (state.gameState !== 'arcade_playing') return
+    const hitWordIds = new Set((result.poppedWords || []).map((word) => word.id))
+    const allWords = state.arcadeSessionWords
+    const missedWords = allWords.filter((word) => !hitWordIds.has(word.id))
+    const username = getSession()?.username || 'guest'
+
+    saveGameRecord({
+      username,
+      playMode: result.playMode,
+      arcadeVersus: result.arcadeVersus,
+      totalWords: result.sessionTotal,
+      hitCount: (result.poppedWords || []).length,
+      missedCount: result.missed,
+      allWords,
+      hitWords: result.poppedWords || [],
+      missedWords,
+    })
+
     set({
       gameState: 'completed',
-      arcadeResult: result,
+      arcadeResult: {
+        ...result,
+        allWords,
+        missedWords,
+        username,
+      },
       showSuccessAnimation: false,
       showStarEffect: false,
     })
@@ -172,6 +197,21 @@ const useGameStore = create((set, get) => ({
     const nextIndex = state.currentWordIndex + 1
 
     if (nextIndex >= state.words.length) {
+      const username = getSession()?.username || 'guest'
+      saveGameRecord({
+        username,
+        playMode: 'classic',
+        totalWords: state.words.length,
+        hitCount: state.completedWords.length,
+        missedCount: Math.max(0, state.words.length - state.completedWords.length),
+        score: state.score,
+        allWords: state.words,
+        hitWords: state.completedWords,
+        missedWords: state.words.filter(
+          (word) => !state.completedWords.some((completed) => completed.id === word.id),
+        ),
+      })
+
       set({
         gameState: 'completed',
         showSuccessAnimation: false,

@@ -18,6 +18,56 @@
   gap: 16px;
 }
 
+.account-only {
+  top: max(16px, env(safe-area-inset-top));
+  right: max(22px, env(safe-area-inset-right));
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 7px;
+  border-radius: 8px;
+  background: rgba(12, 18, 38, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  color: #f8fbff;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+
+.completion-screen > .account-actions {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(22px, env(safe-area-inset-right));
+  z-index: 2;
+}
+
+.account-actions span {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.account-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fbff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .game-title {
   display: flex;
   align-items: center;
