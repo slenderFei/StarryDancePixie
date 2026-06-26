@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react'
 import useGameStore from '../store/gameStore'
 import { isRootSession, logout } from '../utils/auth'
+import { getJumpRopeLeaderboard } from '../utils/gameRecords'
 import './GameUI.css'
 
 function modeTitle(playMode, arcadeVersus) {
   if (playMode === 'balloon')
     return arcadeVersus ? '🎈 气球跳跳碰 · 双人' : '🎈 气球跳跳碰 · 单机'
   if (playMode === 'fruit') return '✍️ 单词拼写'
+  if (playMode === 'rope') return '🪢 虚拟跳绳'
   return '星光词汇挑战'
 }
 
@@ -64,6 +66,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const learned = r.poppedWords.length
     const rate = Math.min(100, Math.round((learned / r.sessionTotal) * 100))
     const isSpelling = r.playMode === 'fruit'
+    const isRope = r.playMode === 'rope'
+    const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
 
     return (
       <div className="game-ui completion-screen">
@@ -74,24 +78,30 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
 
           <div className="completion-stats arcade-stats-row">
             <div className="stat-item highlight">
-              <span className="stat-icon">{r.playMode === 'balloon' ? '🎈' : '✍️'}</span>
-              <span className="stat-value">{learned}</span>
-              <span className="stat-label">{isSpelling ? '拼对单词' : '击破单词'}</span>
+              <span className="stat-icon">
+                {r.playMode === 'balloon' ? '🎈' : isRope ? '🪢' : '✍️'}
+              </span>
+              <span className="stat-value">{isRope ? r.jumpCount || 0 : learned}</span>
+              <span className="stat-label">
+                {isRope ? '跳绳次数' : isSpelling ? '拼对单词' : '击破单词'}
+              </span>
             </div>
             <div className="stat-item">
-              <span className="stat-icon">📦</span>
-              <span className="stat-value">{r.sessionTotal}</span>
-              <span className="stat-label">本局总数</span>
+              <span className="stat-icon">{isRope ? '⏱️' : '📦'}</span>
+              <span className="stat-value">{isRope ? r.durationSeconds || 60 : r.sessionTotal}</span>
+              <span className="stat-label">{isRope ? '秒' : '本局总数'}</span>
             </div>
-            <div className="stat-item">
-              <span className="stat-icon">{isSpelling ? '📝' : '💨'}</span>
-              <span className="stat-value">{r.missed}</span>
-              <span className="stat-label">{isSpelling ? '未完成' : '漏接'}</span>
-            </div>
+            {!isRope && (
+              <div className="stat-item">
+                <span className="stat-icon">{isSpelling ? '📝' : '💨'}</span>
+                <span className="stat-value">{r.missed}</span>
+                <span className="stat-label">{isSpelling ? '未完成' : '漏接'}</span>
+              </div>
+            )}
             <div className="stat-item">
               <span className="stat-icon">🏆</span>
-              <span className="stat-value">{rate}%</span>
-              <span className="stat-label">{isSpelling ? '完成率' : '击中率'}</span>
+              <span className="stat-value">{isRope ? r.rankScore || r.jumpCount || 0 : `${rate}%`}</span>
+              <span className="stat-label">{isRope ? '榜单分' : isSpelling ? '完成率' : '击中率'}</span>
             </div>
           </div>
 
@@ -103,17 +113,34 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
             </div>
           )}
 
-          <div className="completion-words">
-            <h3>{isSpelling ? '拼对的单词' : '击破的单词'}</h3>
-            <div className="words-grid">
-              {(r.poppedWords || []).map((word, idx) => (
-                <div key={`${word.id}-${idx}`} className="word-badge">
-                  <span className="word-en">{word.word}</span>
-                  <span className="word-cn">{word.meaning}</span>
-                </div>
-              ))}
+          {isRope ? (
+            <div className="rope-final-board">
+              <h3>跳绳排行榜</h3>
+              {ropeLeaderboard.length ? (
+                ropeLeaderboard.map((entry, index) => (
+                  <div key={entry.id} className="rope-final-rank">
+                    <span>{index + 1}</span>
+                    <strong>{entry.username}</strong>
+                    <em>{entry.jumpCount}</em>
+                  </div>
+                ))
+              ) : (
+                <p>暂无成绩</p>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="completion-words">
+              <h3>{isSpelling ? '拼对的单词' : '击破的单词'}</h3>
+              <div className="words-grid">
+                {(r.poppedWords || []).map((word, idx) => (
+                  <div key={`${word.id}-${idx}`} className="word-badge">
+                    <span className="word-en">{word.word}</span>
+                    <span className="word-cn">{word.meaning}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button type="button" className="play-again-btn" onClick={resetGame}>
             <span>🏠</span>
@@ -125,6 +152,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               ? rate >= 80
                 ? '拼写很稳！下一局继续挑战更快完成吧！💫'
                 : '慢一点写清楚，每个字母都会更准～加油！💪'
+              : isRope
+                ? (r.jumpCount || 0) >= 80
+                  ? '节奏太稳了！下一轮冲更高榜位吧！💫'
+                  : '先稳住节奏，再慢慢加速，榜单会往上走的！💪'
               : rate >= 80
                 ? '反应超快！再玩一局冲击满分吧！💫'
                 : '多花一点点时间看准位置就更准啦～加油！💪'}

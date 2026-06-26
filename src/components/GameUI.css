@@ -365,6 +365,57 @@
   font-weight: 500;
 }
 
+.rope-final-board {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 360px);
+  margin: 8px auto 18px;
+}
+
+.rope-final-board h3 {
+  margin: 0 0 4px;
+}
+
+.rope-final-board p {
+  margin: 0;
+  color: var(--text-muted-dark);
+}
+
+.rope-final-rank {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(35, 100, 255, 0.12);
+}
+
+.rope-final-rank span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(35, 100, 255, 0.12);
+  color: #2364ff;
+  font-weight: 900;
+}
+
+.rope-final-rank strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rope-final-rank em {
+  color: #d97706;
+  font-style: normal;
+  font-weight: 950;
+}
+
 @media (max-width: 768px) {
   .completion-stats.arcade-stats-row {
     flex-direction: row;

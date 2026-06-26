@@ -152,6 +152,27 @@ function LoadingScreen() {
                 </button>
               </div>
             </div>
+
+            <div
+              className={`mode-card arcade-versus-slot ${cameraReady ? 'ready' : ''}`}
+              aria-disabled={!cameraReady}
+            >
+              <span className="mode-icon">🪢</span>
+              <span className="mode-title">虚拟跳绳</span>
+              <span className="mode-desc">
+                摄像头里画出跳绳，双脚每跳过一次计数一次，60 秒结束后进入排行榜。
+              </span>
+              <div className="versus-actions">
+                <button
+                  type="button"
+                  className="mode-sub-btn rope-start"
+                  onClick={() => startGame({ mode: 'rope', versus: false })}
+                  disabled={!cameraReady}
+                >
+                  开始挑战
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

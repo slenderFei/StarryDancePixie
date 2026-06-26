@@ -57,7 +57,10 @@ const HANDS_PUBLISH_INTERVAL_MS = 55
 const HANDS_SEND_INTERVAL_MS = 55
 
 function isArcadeMode(gameState, playMode) {
-  return gameState === 'arcade_playing' && (playMode === 'balloon' || playMode === 'fruit')
+  return (
+    gameState === 'arcade_playing' &&
+    (playMode === 'balloon' || playMode === 'fruit' || playMode === 'rope')
+  )
 }
 
 function drawSkeletonMini(ctx, landmarks, width, height) {
@@ -369,6 +372,8 @@ function PoseDetector() {
         if (gs.gameState === 'arcade_playing') {
           if (gs.playMode === 'fruit') {
             updatePoseStatus('✍️ 左手张开写字｜握拳提交｜双手交叉重写')
+          } else if (gs.playMode === 'rope') {
+            updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
           } else if (gs.arcadeVersus) {
             updatePoseStatus('🎈 双人：画面左侧=P1｜画面右侧=P2 · 击中气球朗读单词')
           } else {

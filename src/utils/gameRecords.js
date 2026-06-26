@@ -57,6 +57,21 @@ export function clearGameRecords() {
   writeRecords([])
 }
 
+export function getJumpRopeLeaderboard(limit = 5) {
+  return readRecords()
+    .filter((record) => record.playMode === 'rope')
+    .map((record) => ({
+      id: record.id,
+      username: record.username || 'guest',
+      createdAt: record.createdAt,
+      jumpCount: Number(record.jumpCount || record.rankScore || record.hitCount || 0),
+      durationSeconds: Number(record.durationSeconds || 60),
+      rankScore: Number(record.rankScore || record.jumpCount || record.hitCount || 0),
+    }))
+    .sort((a, b) => b.rankScore - a.rankScore || new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, limit)
+}
+
 export function saveGameRecord(record) {
   const records = readRecords()
   const normalized = {
@@ -73,6 +88,9 @@ export function saveGameRecord(record) {
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),
     missedWords: (record.missedWords || []).map(compactWord).filter(Boolean),
     spellingResults: (record.spellingResults || []).map(compactSpellingResult).filter(Boolean),
+    jumpCount: Number(record.jumpCount || 0),
+    durationSeconds: Number(record.durationSeconds || 0),
+    rankScore: Number(record.rankScore || record.jumpCount || 0),
   }
 
   writeRecords([normalized, ...records])

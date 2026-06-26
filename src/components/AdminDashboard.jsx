@@ -6,6 +6,7 @@ import './AdminDashboard.css'
 function modeName(record) {
   if (record.playMode === 'balloon') return record.arcadeVersus ? '气球双人' : '气球单机'
   if (record.playMode === 'fruit') return '单词拼写'
+  if (record.playMode === 'rope') return '虚拟跳绳'
   return '体感学单词'
 }
 
@@ -211,7 +212,10 @@ function AdminDashboard({ onExit, onSessionChange }) {
                     <strong>{record.username}</strong>
                     <span>{modeName(record)}</span>
                     <span>
-                      {formatTime(record.createdAt)} · {record.hitCount}/{record.totalWords}
+                      {formatTime(record.createdAt)} ·{' '}
+                      {record.playMode === 'rope'
+                        ? `${record.jumpCount || record.rankScore || 0} 次`
+                        : `${record.hitCount}/${record.totalWords}`}
                     </span>
                   </button>
                 ))
@@ -233,20 +237,37 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       <strong>{modeName(selectedRecord)}</strong>
                     </div>
                     <div>
-                      <span>命中</span>
+                      <span>{selectedRecord.playMode === 'rope' ? '次数' : '命中'}</span>
                       <strong>
-                        {selectedRecord.hitCount}/{selectedRecord.totalWords}
+                        {selectedRecord.playMode === 'rope'
+                          ? selectedRecord.jumpCount || selectedRecord.rankScore || 0
+                          : `${selectedRecord.hitCount}/${selectedRecord.totalWords}`}
                       </strong>
                     </div>
                     <div>
-                      <span>漏掉</span>
-                      <strong>{selectedRecord.missedCount}</strong>
+                      <span>{selectedRecord.playMode === 'rope' ? '时长' : '漏掉'}</span>
+                      <strong>
+                        {selectedRecord.playMode === 'rope'
+                          ? `${selectedRecord.durationSeconds || 60} 秒`
+                          : selectedRecord.missedCount}
+                      </strong>
                     </div>
                   </div>
-                  <WordList title="本局全量单词" words={selectedRecord.allWords} />
-                  <WordList title="击中的单词" words={selectedRecord.hitWords} />
-                  <WordList title="漏掉的单词" words={selectedRecord.missedWords} />
-                  <SpellingResultList results={selectedRecord.spellingResults} />
+                  {selectedRecord.playMode === 'rope' ? (
+                    <div className="admin-word-list">
+                      <h4>跳绳成绩</h4>
+                      <div>
+                        <span>60 秒 {selectedRecord.jumpCount || selectedRecord.rankScore || 0} 次</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <WordList title="本局全量单词" words={selectedRecord.allWords} />
+                      <WordList title="击中的单词" words={selectedRecord.hitWords} />
+                      <WordList title="漏掉的单词" words={selectedRecord.missedWords} />
+                      <SpellingResultList results={selectedRecord.spellingResults} />
+                    </>
+                  )}
                 </>
               ) : (
                 <div className="empty-records">选择一条记录查看详情</div>

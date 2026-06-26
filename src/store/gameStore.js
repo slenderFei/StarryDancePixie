@@ -17,6 +17,7 @@ function shuffleWords(arr) {
 const ARCADE_ROUND_SIZE_BY_MODE = {
   balloon: 60,
   fruit: 5,
+  rope: 0,
 }
 
 let latestPose = null
@@ -35,7 +36,7 @@ export function getLatestHands() {
 const useGameStore = create((set, get) => ({
   gameState: 'idle',
 
-  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） */
+  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） | rope */
   playMode: 'classic',
 
   /** 体感街机对战：双人时左手侧计 P1、右手侧计 P2（单人摄像头） */
@@ -44,7 +45,7 @@ const useGameStore = create((set, get) => ({
   /** 体感 arcade 一局词表（自五年级词池打乱抽取） */
   arcadeSessionWords: [],
 
-  /** @type {null | { playMode: string, arcadeVersus: boolean, sessionTotal: number, poppedWords: object[], missed: number, player1Hits: number, player2Hits: number, spellingResults?: object[] }} */
+  /** @type {null | { playMode: string, arcadeVersus: boolean, sessionTotal: number, poppedWords: object[], missed: number, player1Hits: number, player2Hits: number, spellingResults?: object[], jumpCount?: number }} */
   arcadeResult: null,
 
   words: wordsData.words,
@@ -77,11 +78,11 @@ const useGameStore = create((set, get) => ({
           : { width: 0, height: 0 },
     }),
 
-  /** @param {{ mode?: 'classic'|'balloon'|'fruit', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
+  /** @param {{ mode?: 'classic'|'balloon'|'fruit'|'rope', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
   startGame: (options = {}) => {
     const mode = options.mode ?? 'classic'
     const requestedVersus = !!(options.versus ?? options.fruitVersus)
-    const arcadeVersus = mode === 'fruit' ? false : requestedVersus
+    const arcadeVersus = mode === 'fruit' || mode === 'rope' ? false : requestedVersus
 
     if (mode === 'classic') {
       set({
@@ -102,10 +103,11 @@ const useGameStore = create((set, get) => ({
       return
     }
 
-    const pool = shuffleWords(grade5bData.words)
-    const roundSize = ARCADE_ROUND_SIZE_BY_MODE[mode] || ARCADE_ROUND_SIZE_BY_MODE.balloon
-    const take = Math.min(roundSize, pool.length)
-    const session = pool.slice(0, take)
+    const roundSize = ARCADE_ROUND_SIZE_BY_MODE[mode] ?? ARCADE_ROUND_SIZE_BY_MODE.balloon
+    const session =
+      roundSize > 0
+        ? shuffleWords(grade5bData.words).slice(0, Math.min(roundSize, grade5bData.words.length))
+        : []
 
     set({
       playMode: mode,
@@ -137,12 +139,18 @@ const useGameStore = create((set, get) => ({
       playMode: result.playMode,
       arcadeVersus: result.arcadeVersus,
       totalWords: result.sessionTotal,
-      hitCount: (result.poppedWords || []).length,
+      hitCount:
+        result.playMode === 'rope'
+          ? Number(result.jumpCount || result.rankScore || 0)
+          : (result.poppedWords || []).length,
       missedCount: result.missed,
       allWords,
       hitWords: result.poppedWords || [],
       missedWords,
       spellingResults: result.spellingResults || [],
+      jumpCount: result.jumpCount,
+      durationSeconds: result.durationSeconds,
+      rankScore: result.rankScore,
     })
 
     set({

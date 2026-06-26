@@ -1,0 +1,193 @@
+.jump-rope-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 112;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.jump-rope-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 12, 26, 0.26), rgba(7, 12, 26, 0.04) 46%, rgba(7, 12, 26, 0.48)),
+    radial-gradient(circle at 50% 72%, rgba(250, 204, 21, 0.12), transparent 34%);
+  pointer-events: none;
+}
+
+.jump-rope-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100svh;
+  z-index: 1;
+}
+
+.jump-rope-hud {
+  position: absolute;
+  top: max(100px, calc(env(safe-area-inset-top, 0px) + 86px));
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(150px, 1.4fr) minmax(96px, 1fr);
+  gap: 10px;
+  width: min(90vw, 620px);
+}
+
+.jump-rope-meter,
+.jump-rope-count {
+  min-height: 86px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 8px;
+  color: #f8fbff;
+  background: rgba(9, 14, 31, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(15px);
+}
+
+.jump-rope-meter span,
+.jump-rope-count span,
+.jump-rope-count em {
+  color: rgba(226, 232, 240, 0.75);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.jump-rope-meter strong {
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.jump-rope-count {
+  min-height: 116px;
+  background:
+    linear-gradient(135deg, rgba(53, 214, 180, 0.18), rgba(250, 204, 21, 0.18)),
+    rgba(9, 14, 31, 0.66);
+}
+
+.jump-rope-count strong {
+  font-size: clamp(58px, 9vw, 94px);
+  font-weight: 950;
+  line-height: 0.88;
+  color: #fef9c3;
+  text-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.32),
+    0 0 26px rgba(250, 204, 21, 0.36);
+}
+
+.jump-rope-board {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 3;
+  width: min(260px, calc(100vw - 36px));
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 8px;
+  color: #f8fbff;
+  background: rgba(9, 14, 31, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24);
+}
+
+.jump-rope-board h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+
+.jump-rope-rank {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jump-rope-rank span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(45, 212, 255, 0.18);
+  color: #a5f3fc;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.jump-rope-rank strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.jump-rope-rank em {
+  color: #fef08a;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.jump-rope-empty {
+  padding: 10px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .jump-rope-hud {
+    top: max(86px, calc(env(safe-area-inset-top, 0px) + 72px));
+    width: min(94vw, 620px);
+    grid-template-columns: 1fr 1.25fr 1fr;
+  }
+
+  .jump-rope-meter,
+  .jump-rope-count {
+    min-height: 74px;
+    padding: 9px 7px;
+  }
+
+  .jump-rope-count {
+    min-height: 94px;
+  }
+
+  .jump-rope-board {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jump-rope-board h3,
+  .jump-rope-empty {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-height: 620px) {
+  .jump-rope-hud {
+    top: max(76px, calc(env(safe-area-inset-top, 0px) + 64px));
+  }
+
+  .jump-rope-board {
+    display: none;
+  }
+}
