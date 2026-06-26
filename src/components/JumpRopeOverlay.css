@@ -101,6 +101,48 @@
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24);
 }
 
+.jump-rope-ready {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-width: min(72vw, 320px);
+  padding: 22px 28px;
+  border-radius: 8px;
+  color: #f8fbff;
+  background: rgba(9, 14, 31, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 20px 62px rgba(0, 0, 0, 0.3);
+}
+
+.jump-rope-ready span {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.jump-rope-ready strong {
+  font-size: clamp(62px, 12vw, 112px);
+  line-height: 0.92;
+  color: #fef08a;
+  text-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.32),
+    0 0 30px rgba(250, 204, 21, 0.42);
+}
+
+.jump-rope-ready-calibrating strong {
+  font-size: clamp(42px, 9vw, 72px);
+  color: #a5f3fc;
+  text-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.32),
+    0 0 30px rgba(45, 212, 255, 0.35);
+}
+
 .jump-rope-board h3 {
   margin: 0 0 2px;
   font-size: 15px;
@@ -179,6 +221,11 @@
   .jump-rope-board h3,
   .jump-rope-empty {
     grid-column: 1 / -1;
+  }
+
+  .jump-rope-ready {
+    top: 50%;
+    padding: 18px 22px;
   }
 }
 

@@ -17,10 +17,25 @@ const POSE_LM = {
 }
 
 const ROUND_MS = 60_000
-const CALIBRATION_MS = 1400
-const AIR_THRESHOLD_PX = 34
-const LANDING_THRESHOLD_PX = 16
-const MIN_JUMP_GAP_MS = 260
+const COUNTDOWN_MS = 3000
+const CALIBRATION_SAMPLE_COUNT = 24
+const AIR_THRESHOLD_RATIO = 0.058
+const HIP_THRESHOLD_RATIO = 0.025
+const MIN_VISIBLE_POINTS = 4
+const MIN_JUMP_GAP_MS = 300
+const MAX_JUMP_GAP_MS = 1600
+const POSE_LOST_RESET_MS = 360
+const RESUME_SETTLE_MS = 420
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function median(values) {
+  if (!values.length) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.floor(sorted.length / 2)]
+}
 
 function visible(point, min = 0.42) {
   return point && (point.visibility == null || point.visibility >= min)
@@ -34,6 +49,11 @@ function midpoint(a, b) {
     x: (a.x + b.x) / 2,
     y: (a.y + b.y) / 2,
   }
+}
+
+function smoothValue(prev, next, alpha = 0.34) {
+  if (!Number.isFinite(prev)) return next
+  return prev * (1 - alpha) + next * alpha
 }
 
 function posePoint(landmarks, index, vw, vh, iw, ih) {
@@ -58,6 +78,9 @@ function JumpRopeOverlay() {
     count: 0,
     secondsLeft: 60,
     status: '校准中',
+    phase: 'calibrating',
+    countdown: 3,
+    quality: 0,
     calibrated: false,
     leaderboard: [],
   })
@@ -83,6 +106,9 @@ function JumpRopeOverlay() {
         ? formatTime(ROUND_MS - (performance.now() - s.roundStartedAt))
         : 60,
       status: s.status,
+      phase: s.phase,
+      countdown: s.countdown,
+      quality: s.quality,
       calibrated: s.calibrated,
       leaderboard: s.leaderboard,
     })
@@ -107,22 +133,29 @@ function JumpRopeOverlay() {
     const rightWrist = posePoint(pose, POSE_LM.RIGHT_WRIST, vw, vh, iw, ih)
     const leftAnkle = posePoint(pose, POSE_LM.LEFT_ANKLE, vw, vh, iw, ih)
     const rightAnkle = posePoint(pose, POSE_LM.RIGHT_ANKLE, vw, vh, iw, ih)
+    const leftShoulder = posePoint(pose, POSE_LM.LEFT_SHOULDER, vw, vh, iw, ih)
+    const rightShoulder = posePoint(pose, POSE_LM.RIGHT_SHOULDER, vw, vh, iw, ih)
     const leftHip = posePoint(pose, POSE_LM.LEFT_HIP, vw, vh, iw, ih)
     const rightHip = posePoint(pose, POSE_LM.RIGHT_HIP, vw, vh, iw, ih)
+    const shoulder = midpoint(leftShoulder, rightShoulder)
     const hip = midpoint(leftHip, rightHip)
     const foot = midpoint(leftAnkle, rightAnkle)
 
     const centerX = hip?.x || vw / 2
     const groundY = s.baselineY || foot?.y || vh * 0.78
-    const ropeWidth = Math.min(vw * 0.86, Math.max(260, vw * 0.62))
-    const ropeHeight = Math.min(vh * 0.42, Math.max(170, vh * 0.28))
-    const phase = ((now - (s.roundStartedAt || now)) / 780) * Math.PI * 2
-    const swing = Math.sin(phase)
+    const bodyHeight = s.bodyHeight || (shoulder && foot ? Math.max(foot.y - shoulder.y, vh * 0.34) : vh * 0.56)
+    const ropeWidth = Math.min(vw * 0.9, clamp(bodyHeight * 1.08, 280, vw * 0.86))
+    const ropeHeight = clamp(bodyHeight * 0.52, 175, vh * 0.46)
+    const timerBase = s.roundStartedAt || s.countdownStartedAt || s.mountedAt
+    const ropeMs = s.roundStartedAt ? clamp(840 - s.count * 3.2, 540, 840) : 1120
+    const ropePhase = ((now - timerBase) / ropeMs) * Math.PI * 2
+    const swing = Math.sin(ropePhase)
     const front = swing > 0
-    const topY = groundY - ropeHeight * (0.76 + 0.16 * Math.cos(phase))
+    const topY = groundY - ropeHeight * (0.76 + 0.16 * Math.cos(ropePhase))
     const bottomY = groundY + 8 + Math.abs(swing) * 18
     const leftX = centerX - ropeWidth / 2
     const rightX = centerX + ropeWidth / 2
+    const readyLineY = groundY - (s.airThresholdPx || 36)
 
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -136,6 +169,14 @@ function JumpRopeOverlay() {
     ctx.stroke()
 
     ctx.shadowBlur = 0
+    ctx.setLineDash([7, 10])
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.44)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(Math.max(16, centerX - ropeWidth * 0.36), readyLineY)
+    ctx.lineTo(Math.min(vw - 16, centerX + ropeWidth * 0.36), readyLineY)
+    ctx.stroke()
+
     ctx.setLineDash([10, 12])
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.lineWidth = 2
@@ -144,6 +185,14 @@ function JumpRopeOverlay() {
     ctx.lineTo(Math.min(vw - 16, centerX + ropeWidth * 0.44), groundY)
     ctx.stroke()
     ctx.setLineDash([])
+
+    ;[leftWrist, rightWrist].forEach((hand) => {
+      if (!hand) return
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.86)'
+      ctx.beginPath()
+      ctx.arc(hand.x, hand.y, 8, 0, Math.PI * 2)
+      ctx.fill()
+    })
 
     if (foot) {
       const lift = Math.max(0, groundY - foot.y)
@@ -178,7 +227,21 @@ function JumpRopeOverlay() {
       roundStartedAt: 0,
       baselineSamples: [],
       baselineY: 0,
+      baselineHipY: 0,
+      bodyHeight: 0,
+      airThresholdPx: 36,
+      landingThresholdPx: 16,
+      hipThresholdPx: 16,
+      hipLandingThresholdPx: 7,
+      smoothedFootY: Number.NaN,
+      smoothedHipY: Number.NaN,
+      countdownStartedAt: 0,
+      missingSince: 0,
+      ignoreUntil: 0,
       calibrated: false,
+      phase: 'calibrating',
+      countdown: 3,
+      quality: 0,
       count: 0,
       inAir: false,
       lastJumpAt: -Infinity,
@@ -203,7 +266,6 @@ function JumpRopeOverlay() {
       const s = stateRef.current
       if (!s || s.finished) return
       const now = performance.now()
-      const calibrationElapsed = now - s.mountedAt
       const roundElapsed = s.roundStartedAt ? now - s.roundStartedAt : 0
       const pose = getLatestPose()
       const vw = window.innerWidth || 390
@@ -214,42 +276,119 @@ function JumpRopeOverlay() {
 
       const leftAnkle = posePoint(pose, POSE_LM.LEFT_ANKLE, vw, vh, iw, ih)
       const rightAnkle = posePoint(pose, POSE_LM.RIGHT_ANKLE, vw, vh, iw, ih)
+      const leftShoulder = posePoint(pose, POSE_LM.LEFT_SHOULDER, vw, vh, iw, ih)
+      const rightShoulder = posePoint(pose, POSE_LM.RIGHT_SHOULDER, vw, vh, iw, ih)
+      const leftHip = posePoint(pose, POSE_LM.LEFT_HIP, vw, vh, iw, ih)
+      const rightHip = posePoint(pose, POSE_LM.RIGHT_HIP, vw, vh, iw, ih)
+      const shoulder = midpoint(leftShoulder, rightShoulder)
+      const hip = midpoint(leftHip, rightHip)
       const foot = midpoint(leftAnkle, rightAnkle)
+      const visibleCount = [leftShoulder, rightShoulder, leftHip, rightHip, leftAnkle, rightAnkle].filter(Boolean).length
+      const hasStableBody = foot && hip && shoulder && visibleCount >= MIN_VISIBLE_POINTS
+      s.quality = Math.round((visibleCount / 6) * 100)
 
-      if (!foot) {
-        s.status = '脚踝未入镜'
+      if (hasStableBody && s.missingSince) {
+        const missingFor = now - s.missingSince
+        if (s.calibrated && !s.roundStartedAt) {
+          s.countdownStartedAt += missingFor
+        }
+        if (s.roundStartedAt && missingFor > POSE_LOST_RESET_MS) {
+          s.inAir = false
+          s.baselineY = foot.y
+          s.baselineHipY = hip.y
+          s.smoothedFootY = foot.y
+          s.smoothedHipY = hip.y
+          s.ignoreUntil = now + RESUME_SETTLE_MS
+          s.status = '重新就位'
+        }
+        s.missingSince = 0
+      }
+
+      if (!hasStableBody) {
+        if (!s.missingSince) s.missingSince = now
+        const missingFor = now - s.missingSince
+        s.status = visibleCount >= 4 ? '下半身再入镜' : '请全身入镜'
+        if (!s.calibrated) {
+          s.baselineSamples = []
+          s.phase = 'calibrating'
+        } else if (!s.roundStartedAt) {
+          s.phase = 'countdown'
+          s.status = '回到镜头继续'
+        } else if (missingFor > POSE_LOST_RESET_MS) {
+          s.inAir = false
+          s.status = '回到镜头继续'
+        }
       } else if (!s.calibrated) {
-        s.baselineSamples.push(foot.y)
-        s.status = '校准中'
-        if (calibrationElapsed >= CALIBRATION_MS && s.baselineSamples.length >= 12) {
-          const sorted = [...s.baselineSamples].sort((a, b) => a - b)
-          s.baselineY = sorted[Math.floor(sorted.length * 0.68)]
+        const bodyHeight = clamp(foot.y - shoulder.y, vh * 0.28, vh * 0.82)
+        s.baselineSamples.push({ footY: foot.y, hipY: hip.y, bodyHeight })
+        if (s.baselineSamples.length > CALIBRATION_SAMPLE_COUNT * 2) {
+          s.baselineSamples.shift()
+        }
+        s.phase = 'calibrating'
+        s.status = `站稳 ${Math.min(CALIBRATION_SAMPLE_COUNT, s.baselineSamples.length)}/${CALIBRATION_SAMPLE_COUNT}`
+        if (s.baselineSamples.length >= CALIBRATION_SAMPLE_COUNT) {
+          s.baselineY = median(s.baselineSamples.map((sample) => sample.footY))
+          s.baselineHipY = median(s.baselineSamples.map((sample) => sample.hipY))
+          s.bodyHeight = median(s.baselineSamples.map((sample) => sample.bodyHeight))
+          s.airThresholdPx = clamp(s.bodyHeight * AIR_THRESHOLD_RATIO, 28, 62)
+          s.landingThresholdPx = clamp(s.airThresholdPx * 0.42, 10, 26)
+          s.hipThresholdPx = clamp(s.bodyHeight * HIP_THRESHOLD_RATIO, 10, 30)
+          s.hipLandingThresholdPx = clamp(s.hipThresholdPx * 0.42, 5, 14)
           s.calibrated = true
+          s.countdownStartedAt = now
+          s.phase = 'countdown'
+          s.status = '准备'
+        }
+      } else if (!s.roundStartedAt) {
+        const countdownLeft = COUNTDOWN_MS - (now - s.countdownStartedAt)
+        s.phase = 'countdown'
+        s.countdown = clamp(Math.ceil(countdownLeft / 1000), 1, 3)
+        s.status = `${s.countdown}`
+        if (countdownLeft <= 0) {
           s.roundStartedAt = now
-          s.status = '开始跳'
+          s.phase = 'active'
+          s.status = '开始'
         }
       } else {
-        const lift = s.baselineY - foot.y
-        const isAirborne = lift > AIR_THRESHOLD_PX
-        const isLanded = lift < LANDING_THRESHOLD_PX
+        s.phase = 'active'
+        s.smoothedFootY = smoothValue(s.smoothedFootY, foot.y)
+        s.smoothedHipY = smoothValue(s.smoothedHipY, hip.y)
+        const lift = s.baselineY - s.smoothedFootY
+        const hipLift = s.baselineHipY - s.smoothedHipY
+        const strongFootLift = lift > s.airThresholdPx * 1.35
+        const isAirborne =
+          (lift > s.airThresholdPx && hipLift > s.hipThresholdPx) || strongFootLift
+        const isLanded =
+          lift < s.landingThresholdPx && hipLift < s.hipLandingThresholdPx
+        const gap = now - s.lastJumpAt
 
-        if (!s.inAir && isAirborne) {
+        if (now < (s.ignoreUntil || 0)) {
+          s.inAir = false
+          s.status = '重新就位'
+        } else if (!s.inAir && isAirborne) {
           s.inAir = true
-          s.status = '空中'
+          s.status = '跳起'
         }
 
-        if (s.inAir && isLanded && now - s.lastJumpAt >= MIN_JUMP_GAP_MS) {
+        if (now >= (s.ignoreUntil || 0) && s.inAir && gap > MAX_JUMP_GAP_MS && lift < s.airThresholdPx * 0.65) {
+          s.inAir = false
+          s.status = '调整节奏'
+        }
+
+        if (now >= (s.ignoreUntil || 0) && s.inAir && isLanded && gap >= MIN_JUMP_GAP_MS) {
           s.inAir = false
           s.lastJumpAt = now
           s.count += 1
+          s.statusHoldUntil = now + 360
           s.status = '计数 +1'
           playSuccessTone(Math.min(5, 1 + (s.count % 5)))
-        } else if (!s.inAir && s.calibrated) {
+        } else if (!s.inAir && now > (s.statusHoldUntil || 0)) {
           s.status = '准备'
         }
 
         if (!s.inAir && isLanded) {
-          s.baselineY = s.baselineY * 0.985 + foot.y * 0.015
+          s.baselineY = s.baselineY * 0.988 + s.smoothedFootY * 0.012
+          s.baselineHipY = s.baselineHipY * 0.99 + s.smoothedHipY * 0.01
         }
       }
 
@@ -291,10 +430,17 @@ function JumpRopeOverlay() {
           <em>{ui.status}</em>
         </div>
         <div className="jump-rope-meter">
-          <span>目标</span>
-          <strong>60s</strong>
+          <span>入镜</span>
+          <strong>{ui.quality}%</strong>
         </div>
       </section>
+
+      {ui.phase !== 'active' && (
+        <div className={`jump-rope-ready jump-rope-ready-${ui.phase}`}>
+          <span>{ui.phase === 'calibrating' ? '站稳校准' : '准备'}</span>
+          <strong>{ui.phase === 'calibrating' ? `${ui.quality}%` : ui.countdown}</strong>
+        </div>
+      )}
 
       <aside className="jump-rope-board">
         <h3>排行榜</h3>
