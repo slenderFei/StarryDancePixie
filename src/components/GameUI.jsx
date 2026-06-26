@@ -64,10 +64,12 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const r = arcadeResult
     const versus = !!(r.arcadeVersus ?? r.fruitVersus)
     const learned = r.poppedWords.length
-    const rate = Math.min(100, Math.round((learned / r.sessionTotal) * 100))
+    const rate = r.sessionTotal > 0 ? Math.min(100, Math.round((learned / r.sessionTotal) * 100)) : 0
     const isSpelling = r.playMode === 'fruit'
     const isRope = r.playMode === 'rope'
+    const isBalloon = r.playMode === 'balloon'
     const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
+    const balloonScore = Number(r.score || 0)
 
     return (
       <div className="game-ui completion-screen">
@@ -81,15 +83,17 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <span className="stat-icon">
                 {r.playMode === 'balloon' ? '🎈' : isRope ? '🪢' : '✍️'}
               </span>
-              <span className="stat-value">{isRope ? r.jumpCount || 0 : learned}</span>
+              <span className="stat-value">
+                {isRope ? r.jumpCount || 0 : isBalloon ? balloonScore : learned}
+              </span>
               <span className="stat-label">
-                {isRope ? '跳绳次数' : isSpelling ? '拼对单词' : '击破单词'}
+                {isRope ? '跳绳次数' : isBalloon ? '本局得分' : '拼对单词'}
               </span>
             </div>
             <div className="stat-item">
-              <span className="stat-icon">{isRope ? '⏱️' : '📦'}</span>
-              <span className="stat-value">{isRope ? r.durationSeconds || 60 : r.sessionTotal}</span>
-              <span className="stat-label">{isRope ? '秒' : '本局总数'}</span>
+              <span className="stat-icon">{isRope ? '⏱️' : isBalloon ? '⚡' : '📦'}</span>
+              <span className="stat-value">{isRope ? r.durationSeconds || 60 : isBalloon ? learned : r.sessionTotal}</span>
+              <span className="stat-label">{isRope ? '秒' : isBalloon ? '击破单词' : '本局总数'}</span>
             </div>
             {!isRope && (
               <div className="stat-item">
@@ -100,16 +104,18 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
             )}
             <div className="stat-item">
               <span className="stat-icon">🏆</span>
-              <span className="stat-value">{isRope ? r.rankScore || r.jumpCount || 0 : `${rate}%`}</span>
-              <span className="stat-label">{isRope ? '榜单分' : isSpelling ? '完成率' : '击中率'}</span>
+              <span className="stat-value">
+                {isRope ? r.rankScore || r.jumpCount || 0 : isBalloon ? r.bestCombo || 0 : `${rate}%`}
+              </span>
+              <span className="stat-label">{isRope ? '榜单分' : isBalloon ? '最高连击' : '完成率'}</span>
             </div>
           </div>
 
           {versus && (
             <div className="versus-final">
-              <span>🔵 P1 · {r.player1Hits ?? 0}</span>
+              <span>🔵 P1 · {r.player1Score ?? r.player1Hits ?? 0}分</span>
               <span className="vs-dot">⚡</span>
-              <span>🔴 P2 · {r.player2Hits ?? 0}</span>
+              <span>🔴 P2 · {r.player2Score ?? r.player2Hits ?? 0}分</span>
             </div>
           )}
 
@@ -136,6 +142,11 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                   <div key={`${word.id}-${idx}`} className="word-badge">
                     <span className="word-en">{word.word}</span>
                     <span className="word-cn">{word.meaning}</span>
+                    {isBalloon && (
+                      <span className="word-score">
+                        {word.balloonLabel || '气球'} +{word.score || 1}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

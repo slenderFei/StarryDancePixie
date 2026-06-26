@@ -31,8 +31,9 @@ function WordList({ title, words }) {
         {(words || []).length ? (
           words.map((word, index) => (
             <span key={`${word.id}-${word.word}-${index}`}>
-              {word.word}
+              <strong>{word.word}</strong>
               {word.meaning ? ` · ${word.meaning}` : ''}
+              {word.score ? <em>{word.balloonLabel || '气球'} +{word.score}</em> : null}
             </span>
           ))
         ) : (
@@ -215,7 +216,9 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       {formatTime(record.createdAt)} ·{' '}
                       {record.playMode === 'rope'
                         ? `${record.jumpCount || record.rankScore || 0} 次`
-                        : `${record.hitCount}/${record.totalWords}`}
+                        : record.playMode === 'balloon'
+                          ? `${record.score || 0}分 · ${record.hitCount}/${record.totalWords}`
+                          : `${record.hitCount}/${record.totalWords}`}
                     </span>
                   </button>
                 ))
@@ -227,7 +230,11 @@ function AdminDashboard({ onExit, onSessionChange }) {
             <div className="record-detail">
               {selectedRecord ? (
                 <>
-                  <div className="record-summary">
+                  <div
+                    className={`record-summary ${
+                      selectedRecord.playMode === 'balloon' ? 'record-summary-wide' : ''
+                    }`}
+                  >
                     <div>
                       <span>用户</span>
                       <strong>{selectedRecord.username}</strong>
@@ -244,6 +251,12 @@ function AdminDashboard({ onExit, onSessionChange }) {
                           : `${selectedRecord.hitCount}/${selectedRecord.totalWords}`}
                       </strong>
                     </div>
+                    {selectedRecord.playMode === 'balloon' && (
+                      <div>
+                        <span>得分</span>
+                        <strong>{selectedRecord.score || 0} 分</strong>
+                      </div>
+                    )}
                     <div>
                       <span>{selectedRecord.playMode === 'rope' ? '时长' : '漏掉'}</span>
                       <strong>

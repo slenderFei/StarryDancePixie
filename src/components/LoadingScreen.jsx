@@ -109,8 +109,7 @@ function LoadingScreen() {
               <span className="mode-icon">🎈</span>
               <span className="mode-title">气球跳跳碰（全屏摄像头）</span>
               <span className="mode-desc">
-                实时画面上叠加火柴人骨架与单词气球下落，从词池中随机抽取 60 词。双人时画面左右两侧分别代表
-                P1 / P2（单摄像头）。
+                单词气球带不同分值，稀有高分球更快更小。连击冲高分，双人时左右两侧分别代表 P1 / P2。
               </span>
               <div className="versus-actions">
                 <button

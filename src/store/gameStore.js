@@ -130,8 +130,12 @@ const useGameStore = create((set, get) => ({
     const state = get()
     if (state.gameState !== 'arcade_playing') return
     const hitWordIds = new Set((result.poppedWords || []).map((word) => word.id))
-    const allWords = state.arcadeSessionWords
-    const missedWords = allWords.filter((word) => !hitWordIds.has(word.id))
+    const allWords = Array.isArray(result.allWords) && result.allWords.length
+      ? result.allWords
+      : state.arcadeSessionWords
+    const missedWords = Array.isArray(result.missedWords)
+      ? result.missedWords
+      : allWords.filter((word) => !hitWordIds.has(word.id))
     const username = getSession()?.username || 'guest'
 
     saveGameRecord({
@@ -151,6 +155,10 @@ const useGameStore = create((set, get) => ({
       jumpCount: result.jumpCount,
       durationSeconds: result.durationSeconds,
       rankScore: result.rankScore,
+      score: result.score,
+      bestCombo: result.bestCombo,
+      player1Score: result.player1Score,
+      player2Score: result.player2Score,
     })
 
     set({

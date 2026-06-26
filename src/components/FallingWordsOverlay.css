@@ -14,16 +14,16 @@
   top: max(92px, calc(env(safe-area-inset-top, 0px) + 82px));
   left: 50%;
   transform: translateX(-50%);
-  padding: 11px 20px;
+  width: min(94vw, 820px);
+  padding: 12px 16px;
   border-radius: 8px;
   background: rgba(12, 18, 38, 0.6);
   backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  justify-content: center;
-  gap: 10px 18px;
+  gap: 10px 16px;
   color: #fff;
   font-weight: 800;
   font-size: 15px;
@@ -31,10 +31,77 @@
   box-shadow: 0 16px 46px rgba(0, 0, 0, 0.22);
 }
 
+.falling-hud-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.falling-hud-title span {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 12px;
+}
+
+.falling-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.falling-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(248, 251, 255, 0.92);
+  font-size: 13px;
+}
+
+.falling-stats .falling-score-main {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.28), rgba(45, 212, 255, 0.18));
+  color: #fef9c3;
+}
+
 .falling-hud .versus-stats {
   display: flex;
-  gap: 20px;
-  font-size: 16px;
+  gap: 8px;
+}
+
+.balloon-score-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.balloon-score-key {
+  --balloon-a: #f8fafc;
+  --balloon-b: #cbd5e1;
+  --balloon-c: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.balloon-score-key i {
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: linear-gradient(145deg, var(--balloon-a), var(--balloon-b), var(--balloon-c));
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.12);
 }
 
 .falling-item {
@@ -50,9 +117,11 @@
 }
 
 .falling-item.balloon-shape {
-  --balloon-a: #ffb7c5;
-  --balloon-b: #bae6fd;
-  --balloon-c: #ddd6fe;
+  --balloon-a: #f8fafc;
+  --balloon-b: #cbd5e1;
+  --balloon-c: #94a3b8;
+  --balloon-ink: #172033;
+  --balloon-glow: rgba(148, 163, 184, 0.24);
   --string-color: rgba(100, 116, 139, 0.75);
   width: 118px;
   height: 140px;
@@ -65,7 +134,7 @@
     inset -6px -10px 18px rgba(255, 255, 255, 0.5),
     inset 4px 4px 12px rgba(0, 0, 0, 0.06),
     0 18px 34px rgba(0, 0, 0, 0.18),
-    0 0 24px rgba(255, 255, 255, 0.16);
+    0 0 26px var(--balloon-glow);
   animation: balloon-bob 3.2s ease-in-out infinite;
 }
 
@@ -101,46 +170,81 @@
   background: linear-gradient(to bottom, var(--string-color), transparent);
 }
 
-/* 颜色 / 类型 */
-.balloon-candy {
-  --balloon-a: #fda4af;
-  --balloon-b: #fbcfe8;
-  --balloon-c: #f9a8d4;
+.balloon-score-chip,
+.balloon-tier-name,
+.falling-word {
+  position: relative;
+  z-index: 1;
 }
 
-.balloon-sky {
-  --balloon-a: #7dd3fc;
-  --balloon-b: #38bdf8;
-  --balloon-c: #a5b4fc;
+.balloon-score-chip {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  min-width: 31px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.68);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.balloon-tier-name {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  min-width: 42px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--balloon-ink);
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 分值类型 */
+.balloon-type-pearl {
+  --balloon-a: #ffffff;
+  --balloon-b: #e2e8f0;
+  --balloon-c: #bae6fd;
+  --balloon-ink: #1e293b;
+  --balloon-glow: rgba(186, 230, 253, 0.32);
+  --string-color: rgba(100, 116, 139, 0.55);
+}
+
+.balloon-type-aqua {
+  --balloon-a: #a5f3fc;
+  --balloon-b: #22d3ee;
+  --balloon-c: #38bdf8;
+  --balloon-ink: #073344;
+  --balloon-glow: rgba(34, 211, 238, 0.36);
   --string-color: rgba(59, 130, 246, 0.55);
 }
 
-.balloon-sunshine {
-  --balloon-a: #fde047;
-  --balloon-b: #fbbf24;
-  --balloon-c: #fb923c;
-  --string-color: rgba(180, 83, 9, 0.5);
-}
-
-.balloon-lavender {
-  --balloon-a: #e9d5ff;
-  --balloon-b: #c4b5fd;
-  --balloon-c: #a78bfa;
+.balloon-type-violet {
+  --balloon-a: #f0abfc;
+  --balloon-b: #c084fc;
+  --balloon-c: #8b5cf6;
+  --balloon-ink: #fff;
+  --balloon-glow: rgba(192, 132, 252, 0.42);
   --string-color: rgba(109, 40, 217, 0.45);
 }
 
-.balloon-mint {
-  --balloon-a: #99f6e4;
-  --balloon-b: #5eead4;
-  --balloon-c: #6ee7b7;
-  --string-color: rgba(13, 148, 136, 0.5);
-}
-
-.balloon-coral {
-  --balloon-a: #fdba74;
-  --balloon-b: #fb7185;
-  --balloon-c: #f472b6;
-  --string-color: rgba(190, 24, 93, 0.45);
+.balloon-type-gold {
+  --balloon-a: #fef9c3;
+  --balloon-b: #facc15;
+  --balloon-c: #f97316;
+  --balloon-ink: #3b2500;
+  --balloon-glow: rgba(250, 204, 21, 0.54);
+  --string-color: rgba(180, 83, 9, 0.52);
 }
 
 /* 心形 */
@@ -165,7 +269,8 @@
   );
   box-shadow:
     inset -4px -8px 14px rgba(255, 255, 255, 0.45),
-    0 14px 28px rgba(0, 0, 0, 0.12);
+    0 14px 28px rgba(0, 0, 0, 0.12),
+    0 0 30px var(--balloon-glow);
 }
 
 .balloon-shape-heart .balloon-shine {
@@ -201,38 +306,41 @@
     2% 35%,
     39% 32%
   );
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
-}
-
-.balloon-star {
-  --balloon-a: #fef08a;
-  --balloon-b: #fde047;
-  --balloon-c: #facc15;
-}
-
-.balloon-heart {
-  --balloon-a: #fb7185;
-  --balloon-b: #f43f5e;
-  --balloon-c: #fda4af;
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.12),
+    0 0 32px var(--balloon-glow);
 }
 
 .balloon-shape-heart .falling-word,
 .balloon-shape-star .falling-word {
-  margin-top: 6px;
-  color: #fff;
+  margin-top: -6px;
+  color: var(--balloon-ink);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.balloon-shape-heart .balloon-score-chip,
+.balloon-shape-star .balloon-score-chip {
+  top: 4px;
+  right: 4px;
+}
+
+.balloon-shape-heart .balloon-tier-name,
+.balloon-shape-star .balloon-tier-name {
+  bottom: 14px;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.34);
 }
 
 .falling-word {
   font-size: 17px;
   font-weight: 900;
-  color: #374151;
+  color: var(--balloon-ink);
   text-align: center;
-  padding: 0 8px;
+  padding: 0 10px;
   line-height: 1.25;
   letter-spacing: 0;
   overflow-wrap: anywhere;
-  max-width: 104px;
+  max-width: 100px;
 }
 
 .fruit-shape {
@@ -286,7 +394,20 @@
     top: max(84px, calc(env(safe-area-inset-top, 0px) + 74px));
     font-size: 13px;
     padding: 9px 12px;
-    width: min(92vw, 520px);
+    width: min(94vw, 560px);
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .falling-hud-title,
+  .falling-stats,
+  .balloon-score-legend {
+    justify-content: center;
+  }
+
+  .falling-stats span,
+  .balloon-score-key {
+    font-size: 11px;
   }
 
   /* 勿在外层 item 上使用 transform: scale，会与内联 translate3d() 打架导致气球飞出视口不可见 */

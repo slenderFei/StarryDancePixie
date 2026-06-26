@@ -187,6 +187,10 @@
   gap: 10px;
 }
 
+.record-summary.record-summary-wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .record-summary div {
   padding: 12px;
   border-radius: 8px;
@@ -224,6 +228,25 @@
   background: rgba(255, 255, 255, 0.08);
   color: rgba(226, 232, 240, 0.78);
   font-size: 13px;
+}
+
+.admin-word-list span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-word-list span strong {
+  color: #f8fbff;
+}
+
+.admin-word-list span em {
+  padding: 3px 6px;
+  background: rgba(250, 204, 21, 0.14);
+  color: #fef3c7;
+  font-style: normal;
+  font-weight: 850;
 }
 
 .admin-spelling-list {
@@ -303,6 +326,7 @@
   .admin-user-form,
   .records-layout,
   .record-summary,
+  .record-summary.record-summary-wide,
   .admin-table-row {
     grid-template-columns: 1fr;
   }

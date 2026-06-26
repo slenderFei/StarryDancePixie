@@ -375,9 +375,9 @@ function PoseDetector() {
           } else if (gs.playMode === 'rope') {
             updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
           } else if (gs.arcadeVersus) {
-            updatePoseStatus('🎈 双人：画面左侧=P1｜画面右侧=P2 · 击中气球朗读单词')
+            updatePoseStatus('🎈 双人：左侧=P1｜右侧=P2 · 击中高分气球抢分')
           } else {
-            updatePoseStatus('🎈 挥动手臂或伸手顶破气球，朗读气球上的单词')
+            updatePoseStatus('🎈 挥动手臂顶破气球，高分球更稀有')
           }
           return
         }

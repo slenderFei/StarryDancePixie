@@ -20,6 +20,10 @@ function compactWord(word) {
     id: word.id,
     word: word.word,
     meaning: word.meaning,
+    score: Number(word.score || 0),
+    balloonType: word.balloonType || '',
+    balloonLabel: word.balloonLabel || '',
+    hitBy: word.hitBy || '',
   }
 }
 
@@ -84,6 +88,9 @@ export function saveGameRecord(record) {
     hitCount: Number(record.hitCount || 0),
     missedCount: Number(record.missedCount || 0),
     score: Number(record.score || 0),
+    bestCombo: Number(record.bestCombo || 0),
+    player1Score: Number(record.player1Score || 0),
+    player2Score: Number(record.player2Score || 0),
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),
     missedWords: (record.missedWords || []).map(compactWord).filter(Boolean),

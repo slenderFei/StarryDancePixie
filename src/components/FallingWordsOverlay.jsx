@@ -28,22 +28,74 @@ const BALLOON_FALL_CROSS_MS = 15500
 const ARCADE_HIT_COOLDOWN_MS = 240
 const ARCADE_SPEECH_GAP_MS = 720
 
-/** 气球造型：颜色 / 形状各异 */
-const BALLOON_VARIANTS = [
-  { id: 'candy', className: 'balloon-candy' },
-  { id: 'sky', className: 'balloon-sky' },
-  { id: 'sunshine', className: 'balloon-sunshine' },
-  { id: 'lavender', className: 'balloon-lavender' },
-  { id: 'mint', className: 'balloon-mint' },
-  { id: 'coral', className: 'balloon-coral' },
-  { id: 'heart', className: 'balloon-heart balloon-shape-heart' },
-  { id: 'star', className: 'balloon-star balloon-shape-star' },
+const BALLOON_TYPES = [
+  {
+    id: 'pearl',
+    label: '白晶',
+    score: 1,
+    className: 'balloon-type-pearl',
+    legendClassName: 'balloon-type-pearl',
+    weight: 40,
+    speedScale: 0.95,
+    sizeScale: 1.05,
+    hitScale: 1.06,
+  },
+  {
+    id: 'aqua',
+    label: '蓝能',
+    score: 2,
+    className: 'balloon-type-aqua',
+    legendClassName: 'balloon-type-aqua',
+    weight: 32,
+    speedScale: 1,
+    sizeScale: 1,
+    hitScale: 1,
+  },
+  {
+    id: 'violet',
+    label: '紫核',
+    score: 3,
+    className: 'balloon-type-violet balloon-shape-heart',
+    legendClassName: 'balloon-type-violet',
+    weight: 18,
+    speedScale: 1.08,
+    sizeScale: 0.98,
+    hitScale: 0.96,
+  },
+  {
+    id: 'gold',
+    label: '金星',
+    score: 5,
+    className: 'balloon-type-gold balloon-shape-star',
+    legendClassName: 'balloon-type-gold',
+    weight: 10,
+    speedScale: 1.16,
+    sizeScale: 0.93,
+    hitScale: 0.9,
+  },
 ]
 
-function pickBalloonVariant(seed) {
-  const n = BALLOON_VARIANTS.length
-  const i = Math.abs(Math.floor(seed)) % n
-  return BALLOON_VARIANTS[i]
+const BALLOON_TYPE_TOTAL_WEIGHT = BALLOON_TYPES.reduce((sum, type) => sum + type.weight, 0)
+
+function pickBalloonType() {
+  let roll = Math.random() * BALLOON_TYPE_TOTAL_WEIGHT
+  for (const type of BALLOON_TYPES) {
+    roll -= type.weight
+    if (roll <= 0) return type
+  }
+  return BALLOON_TYPES[0]
+}
+
+function decorateWord(word, balloonType, hitBy = '') {
+  if (!word) return word
+  return {
+    ...word,
+    balloonType: balloonType?.id || '',
+    balloonLabel: balloonType?.label || '',
+    score: Number(balloonType?.score || 0),
+    hitBy,
+    hitAt: new Date().toISOString(),
+  }
 }
 
 function arcadeSpawnConfig(isBalloonMode) {
@@ -130,16 +182,28 @@ function FallingWordsOverlay() {
   const [hudStats, setHudStats] = useState({
     popped: 0,
     missed: 0,
+    score: 0,
+    combo: 0,
+    bestCombo: 0,
     p1Hits: 0,
     p2Hits: 0,
+    p1Score: 0,
+    p2Score: 0,
   })
 
   const statsRef = useRef({
     popped: 0,
     missed: 0,
+    score: 0,
+    combo: 0,
+    bestCombo: 0,
     p1Hits: 0,
     p2Hits: 0,
+    p1Score: 0,
+    p2Score: 0,
     poppedList: [],
+    missedList: [],
+    spawnedList: [],
   })
 
   const isBalloon = playMode === 'balloon'
@@ -159,8 +223,13 @@ function FallingWordsOverlay() {
     setHudStats({
       popped: s.popped,
       missed: s.missed,
+      score: s.score,
+      combo: s.combo,
+      bestCombo: s.bestCombo,
       p1Hits: s.p1Hits,
       p2Hits: s.p2Hits,
+      p1Score: s.p1Score,
+      p2Score: s.p2Score,
     })
   }, [])
 
@@ -176,16 +245,28 @@ function FallingWordsOverlay() {
     statsRef.current = {
       popped: 0,
       missed: 0,
+      score: 0,
+      combo: 0,
+      bestCombo: 0,
       p1Hits: 0,
       p2Hits: 0,
+      p1Score: 0,
+      p2Score: 0,
       poppedList: [],
+      missedList: [],
+      spawnedList: [],
     }
     setRenderItems([])
     setHudStats({
       popped: 0,
       missed: 0,
+      score: 0,
+      combo: 0,
+      bestCombo: 0,
       p1Hits: 0,
       p2Hits: 0,
+      p1Score: 0,
+      p2Score: 0,
     })
   }, [arcadeSessionWords, gameState, playMode, clearPopTimeouts])
 
@@ -195,10 +276,16 @@ function FallingWordsOverlay() {
       playMode,
       arcadeVersus,
       sessionTotal,
+      allWords: [...s.spawnedList],
       poppedWords: [...s.poppedList],
+      missedWords: [...s.missedList],
       missed: s.missed,
       player1Hits: arcadeVersus ? s.p1Hits : s.popped,
       player2Hits: arcadeVersus ? s.p2Hits : 0,
+      player1Score: arcadeVersus ? s.p1Score : s.score,
+      player2Score: arcadeVersus ? s.p2Score : 0,
+      score: s.score,
+      bestCombo: s.bestCombo,
     })
   }, [finishArcade, arcadeVersus, playMode, sessionTotal])
 
@@ -221,17 +308,19 @@ function FallingWordsOverlay() {
       const id = `${word.id}-${spawnIdx}`
       spawnedCountRef.current += 1
 
+      const balloonType = isBalloon ? pickBalloonType() : null
       const xFrac = 0.08 + Math.random() * 0.84
       const vhEff =
         typeof globalThis.innerHeight === 'number' && globalThis.innerHeight > 0
           ? globalThis.innerHeight
           : 820
-      const speedTune = isBalloon ? 0.88 + Math.random() * 0.32 : 0.72 + Math.random() * 0.56
+      const speedTune = isBalloon
+        ? (0.88 + Math.random() * 0.32) * (balloonType?.speedScale ?? 1)
+        : 0.72 + Math.random() * 0.56
       const vy = (vhEff / cfg.fallCrossMs) * speedTune
-      const balloonVariant = isBalloon
-        ? pickBalloonVariant((Number(word.id) || spawnIdx) + spawnIdx * 7)
-        : null
-      const sizeScale = isBalloon ? 0.9 + Math.random() * 0.22 : 1
+      const sizeScale = isBalloon
+        ? (balloonType?.sizeScale ?? 1) * (0.95 + Math.random() * 0.12)
+        : 1
 
       itemsRef.current.push({
         id,
@@ -245,9 +334,10 @@ function FallingWordsOverlay() {
         popping: false,
         done: false,
         swayPx: 0,
-        balloonVariant,
+        balloonType,
         sizeScale,
       })
+      statsRef.current.spawnedList.push(decorateWord(word, balloonType))
 
       nextSpawnAtRef.current = now + cfg.spawnGapMin + Math.random() * cfg.spawnGapExtra
       commitItems()
@@ -291,8 +381,6 @@ function FallingWordsOverlay() {
       const vw = innerWidth || 390
       const vh = innerHeight || 820
       const minVH = Math.min(vw, vh)
-      const hitR = minVH * 0.1
-      const hitR2 = hitR * hitR
       const cxOffset = isBalloon ? 59 : 60
       const cyOffset = isBalloon ? 70 : 59
 
@@ -313,6 +401,8 @@ function FallingWordsOverlay() {
         it.wobbleDeg = Math.sin(now * 0.0018 + it.phase * 1.3) * (isBalloon ? 5.5 : 2)
         const cx = it.xFrac * vw + sway + cxOffset
         const cy = it.y + cyOffset
+        const hitR = minVH * 0.1 * (it.balloonType?.hitScale ?? 1)
+        const hitR2 = hitR * hitR
         applyItemTransform(it, vw)
 
         if (landmarks && landmarks.length && !it.popping) {
@@ -334,15 +424,24 @@ function FallingWordsOverlay() {
             hitClockRef.current[hitKey] = now
             it.popping = true
             const w = it.word
+            const points = Number(it.balloonType?.score || 1)
             statsRef.current.popped += 1
-            statsRef.current.poppedList.push(w)
+            statsRef.current.score += points
+            statsRef.current.combo += 1
+            statsRef.current.bestCombo = Math.max(
+              statsRef.current.bestCombo,
+              statsRef.current.combo,
+            )
+            statsRef.current.poppedList.push(decorateWord(w, it.balloonType, who))
 
             if (gs.arcadeVersus) {
               if (who === 'p1') statsRef.current.p1Hits += 1
               if (who === 'p2') statsRef.current.p2Hits += 1
+              if (who === 'p1') statsRef.current.p1Score += points
+              if (who === 'p2') statsRef.current.p2Score += points
             }
 
-            playSuccessTone(Math.min(4, 1 + (statsRef.current.popped % 5)))
+            playSuccessTone(Math.min(5, points + Math.min(2, statsRef.current.combo % 3)))
             if (now - lastSpeechAtRef.current >= ARCADE_SPEECH_GAP_MS) {
               lastSpeechAtRef.current = now
               playWordPronunciation(w.word)
@@ -364,6 +463,8 @@ function FallingWordsOverlay() {
         if (!it.popping && it.y > vh + 120) {
           it.done = true
           statsRef.current.missed += 1
+          statsRef.current.combo = 0
+          statsRef.current.missedList.push(decorateWord(it.word, it.balloonType))
           commitHudStats()
         }
       }
@@ -411,36 +512,47 @@ function FallingWordsOverlay() {
   let hudVersus = null
   if (arcadeVersus) {
     hudVersus = (
-      <div className="versus-stats">
-        <span title="画面左侧玩家击中">🔵 P1 · {st.p1Hits}</span>
-        <span>|</span>
-        <span title="画面右侧玩家击中">🔴 P2 · {st.p2Hits}</span>
-        <span>|</span>
+      <div className="versus-stats falling-stats">
+        <span title="画面左侧玩家得分">P1 · {st.p1Score}分 / {st.p1Hits}击</span>
+        <span title="画面右侧玩家得分">P2 · {st.p2Score}分 / {st.p2Hits}击</span>
+        <span>连击 {st.combo}</span>
         <span>漏接 {st.missed}</span>
       </div>
     )
   } else {
     hudVersus = (
-      <>
+      <div className="falling-stats">
+        <span className="falling-score-main">分数 {st.score}</span>
         <span>
-          ⚡击破 {st.popped} / {sessionTotal}
+          击破 {st.popped} / {sessionTotal}
         </span>
+        <span>连击 {st.combo}</span>
         <span>漏接 {st.missed}</span>
-      </>
+      </div>
     )
   }
 
   return (
     <div className="falling-words-overlay" aria-hidden="true">
       <div className="falling-hud">
-        {arcadeVersus ? '🎈 气球跳跳碰 · 双人' : '🎈 气球跳跳碰 · 单机'}
-        {arcadeVersus && <span>画面左侧=P1｜画面右侧=P2</span>}
+        <div className="falling-hud-title">
+          {arcadeVersus ? '气球跳跳碰 · 双人' : '气球跳跳碰 · 单机'}
+          {arcadeVersus && <span>左侧 P1｜右侧 P2</span>}
+        </div>
         {hudVersus}
+        <div className="balloon-score-legend" aria-hidden="true">
+          {BALLOON_TYPES.map((type) => (
+            <span key={type.id} className={`balloon-score-key ${type.legendClassName}`}>
+              <i />
+              {type.label} +{type.score}
+            </span>
+          ))}
+        </div>
       </div>
 
       {itemsRender.map((it) => {
         const balloonClasses = isBalloon
-          ? ['balloon-shape', it.balloonVariant?.className ?? 'balloon-candy'].join(' ')
+          ? ['balloon-shape', it.balloonType?.className ?? 'balloon-type-pearl'].join(' ')
           : 'fruit-shape'
         const scale = isBalloon ? it.sizeScale ?? 1 : 1
         const halfW = isBalloon ? 59 : 60
@@ -466,7 +578,17 @@ function FallingWordsOverlay() {
             }}
           >
             {isBalloon && <span className="balloon-shine" aria-hidden="true" />}
+            {isBalloon && (
+              <span className="balloon-score-chip" aria-hidden="true">
+                +{it.balloonType?.score ?? 1}
+              </span>
+            )}
             <span className="falling-word">{it.word.word}</span>
+            {isBalloon && (
+              <span className="balloon-tier-name" aria-hidden="true">
+                {it.balloonType?.label ?? '白晶'}
+              </span>
+            )}
           </div>
         )
       })}
