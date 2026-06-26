@@ -13,6 +13,7 @@ import './App.css'
 const GameCanvas = lazy(() => import('./components/GameCanvas'))
 const PoseDetector = lazy(() => import('./components/PoseDetector'))
 const FallingWordsOverlay = lazy(() => import('./components/FallingWordsOverlay'))
+const SpellingWordsOverlay = lazy(() => import('./components/SpellingWordsOverlay'))
 
 function App() {
   const gameState = useGameStore((s) => s.gameState)
@@ -97,9 +98,15 @@ function App() {
       </Suspense>
 
       {/* 街机图层：盖住全屏实况，夹在摄像头层与顶部 GameUI 之间 */}
-      {isArcadePlaying && (
+      {isArcadePlaying && playMode === 'balloon' && (
         <Suspense fallback={null}>
           <FallingWordsOverlay />
+        </Suspense>
+      )}
+
+      {isArcadePlaying && playMode === 'fruit' && (
+        <Suspense fallback={null}>
+          <SpellingWordsOverlay />
         </Suspense>
       )}
 

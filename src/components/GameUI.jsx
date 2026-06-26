@@ -6,8 +6,7 @@ import './GameUI.css'
 function modeTitle(playMode, arcadeVersus) {
   if (playMode === 'balloon')
     return arcadeVersus ? '🎈 气球跳跳碰 · 双人' : '🎈 气球跳跳碰 · 单机'
-  if (playMode === 'fruit')
-    return arcadeVersus ? '🍉 切水果 · 双人' : '🍉 单词切水果 · 单机'
+  if (playMode === 'fruit') return '✍️ 单词拼写'
   return '星光词汇挑战'
 }
 
@@ -64,6 +63,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const versus = !!(r.arcadeVersus ?? r.fruitVersus)
     const learned = r.poppedWords.length
     const rate = Math.min(100, Math.round((learned / r.sessionTotal) * 100))
+    const isSpelling = r.playMode === 'fruit'
 
     return (
       <div className="game-ui completion-screen">
@@ -74,9 +74,9 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
 
           <div className="completion-stats arcade-stats-row">
             <div className="stat-item highlight">
-              <span className="stat-icon">{r.playMode === 'balloon' ? '🎈' : '🍉'}</span>
+              <span className="stat-icon">{r.playMode === 'balloon' ? '🎈' : '✍️'}</span>
               <span className="stat-value">{learned}</span>
-              <span className="stat-label">击破单词</span>
+              <span className="stat-label">{isSpelling ? '拼对单词' : '击破单词'}</span>
             </div>
             <div className="stat-item">
               <span className="stat-icon">📦</span>
@@ -84,14 +84,14 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <span className="stat-label">本局总数</span>
             </div>
             <div className="stat-item">
-              <span className="stat-icon">💨</span>
+              <span className="stat-icon">{isSpelling ? '📝' : '💨'}</span>
               <span className="stat-value">{r.missed}</span>
-              <span className="stat-label">漏接</span>
+              <span className="stat-label">{isSpelling ? '未完成' : '漏接'}</span>
             </div>
             <div className="stat-item">
               <span className="stat-icon">🏆</span>
               <span className="stat-value">{rate}%</span>
-              <span className="stat-label">击中率</span>
+              <span className="stat-label">{isSpelling ? '完成率' : '击中率'}</span>
             </div>
           </div>
 
@@ -104,7 +104,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
           )}
 
           <div className="completion-words">
-            <h3>击破的单词</h3>
+            <h3>{isSpelling ? '拼对的单词' : '击破的单词'}</h3>
             <div className="words-grid">
               {(r.poppedWords || []).map((word, idx) => (
                 <div key={`${word.id}-${idx}`} className="word-badge">
@@ -121,9 +121,13 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
           </button>
 
           <p className="encouragement">
-            {rate >= 80
-              ? '反应超快！再玩一局冲击满分吧！💫'
-              : '多花一点点时间看准位置就更准啦～加油！💪'}
+            {isSpelling
+              ? rate >= 80
+                ? '拼写很稳！下一局继续挑战更快完成吧！💫'
+                : '慢一点写清楚，每个字母都会更准～加油！💪'
+              : rate >= 80
+                ? '反应超快！再玩一局冲击满分吧！💫'
+                : '多花一点点时间看准位置就更准啦～加油！💪'}
           </p>
         </div>
       </div>

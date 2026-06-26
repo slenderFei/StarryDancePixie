@@ -5,7 +5,7 @@ import './AdminDashboard.css'
 
 function modeName(record) {
   if (record.playMode === 'balloon') return record.arcadeVersus ? '气球双人' : '气球单机'
-  if (record.playMode === 'fruit') return record.arcadeVersus ? '切水果双人' : '切水果单机'
+  if (record.playMode === 'fruit') return '单词拼写'
   return '体感学单词'
 }
 
@@ -37,6 +37,37 @@ function WordList({ title, words }) {
         ) : (
           <em>暂无</em>
         )}
+      </div>
+    </div>
+  )
+}
+
+function SpellingResultList({ results }) {
+  if (!results?.length) return null
+
+  return (
+    <div className="admin-spelling-list">
+      <h4>拼写明细</h4>
+      <div className="admin-spelling-items">
+        {results.map((result, index) => (
+          <article key={`${result.id}-${index}`} className="admin-spelling-item">
+            <div>
+              <strong>{result.meaning || result.word}</strong>
+              <span>
+                {result.targetWord || result.word} → {result.spelledWord || '未完成'}
+              </span>
+            </div>
+            <div className="admin-letter-attempts">
+              {(result.attempts || []).map((attempt) => (
+                <span key={`${attempt.letterIndex}-${attempt.expectedLetter}`}>
+                  {attempt.expectedLetter}
+                  <em>{Math.round((attempt.confidence || 0) * 100)}%</em>
+                </span>
+              ))}
+              {result.canceledCount > 0 && <span>重写 {result.canceledCount} 次</span>}
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   )
@@ -160,7 +191,7 @@ function AdminDashboard({ onExit, onSessionChange }) {
           <div className="admin-section-head">
             <div>
               <h2>游戏记录</h2>
-              <p>记录用户、时间、模式、全量单词、击中单词和漏掉单词。</p>
+              <p>记录用户、时间、模式、全量单词、击中单词、漏掉单词和拼写明细。</p>
             </div>
             <button type="button" onClick={handleClearRecords}>
               清空记录
@@ -215,6 +246,7 @@ function AdminDashboard({ onExit, onSessionChange }) {
                   <WordList title="本局全量单词" words={selectedRecord.allWords} />
                   <WordList title="击中的单词" words={selectedRecord.hitWords} />
                   <WordList title="漏掉的单词" words={selectedRecord.missedWords} />
+                  <SpellingResultList results={selectedRecord.spellingResults} />
                 </>
               ) : (
                 <div className="empty-records">选择一条记录查看详情</div>

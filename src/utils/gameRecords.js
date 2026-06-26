@@ -23,6 +23,32 @@ function compactWord(word) {
   }
 }
 
+function compactSpellingResult(result) {
+  if (!result) return null
+  return {
+    id: result.id,
+    word: result.word || result.targetWord,
+    meaning: result.meaning,
+    targetWord: result.targetWord || result.word,
+    spelledWord: result.spelledWord || '',
+    canceledCount: Number(result.canceledCount || 0),
+    completedAt: result.completedAt || '',
+    attempts: Array.isArray(result.attempts)
+      ? result.attempts.map((attempt) => ({
+          letterIndex: Number(attempt.letterIndex || 0),
+          expectedLetter: attempt.expectedLetter || '',
+          recognizedLetter: attempt.recognizedLetter || '',
+          bestLetter: attempt.bestLetter || '',
+          confidence: Number(attempt.confidence || 0),
+          matchedExpected: !!attempt.matchedExpected,
+          pointCount: Number(attempt.pointCount || 0),
+          pathLength: Number(attempt.pathLength || 0),
+          createdAt: attempt.createdAt || '',
+        }))
+      : [],
+  }
+}
+
 export function getGameRecords() {
   return readRecords()
 }
@@ -46,6 +72,7 @@ export function saveGameRecord(record) {
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),
     missedWords: (record.missedWords || []).map(compactWord).filter(Boolean),
+    spellingResults: (record.spellingResults || []).map(compactSpellingResult).filter(Boolean),
   }
 
   writeRecords([normalized, ...records])

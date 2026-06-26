@@ -14,12 +14,20 @@ function shuffleWords(arr) {
   return a
 }
 
-const ARCADE_ROUND_SIZE = 60
+const ARCADE_ROUND_SIZE_BY_MODE = {
+  balloon: 60,
+  fruit: 5,
+}
 
 let latestPose = null
+let latestHands = null
 
 export function getLatestPose() {
   return latestPose
+}
+
+export function getLatestHands() {
+  return latestHands
 }
 
 // classic: idle -> learning -> action_pending -> action_success ...
@@ -27,7 +35,7 @@ export function getLatestPose() {
 const useGameStore = create((set, get) => ({
   gameState: 'idle',
 
-  /** classic | balloon | fruit */
+  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） */
   playMode: 'classic',
 
   /** 体感街机对战：双人时左手侧计 P1、右手侧计 P2（单人摄像头） */
@@ -36,7 +44,7 @@ const useGameStore = create((set, get) => ({
   /** 体感 arcade 一局词表（自五年级词池打乱抽取） */
   arcadeSessionWords: [],
 
-  /** @type {null | { playMode: string, arcadeVersus: boolean, sessionTotal: number, poppedWords: object[], missed: number, player1Hits: number, player2Hits: number }} */
+  /** @type {null | { playMode: string, arcadeVersus: boolean, sessionTotal: number, poppedWords: object[], missed: number, player1Hits: number, player2Hits: number, spellingResults?: object[] }} */
   arcadeResult: null,
 
   words: wordsData.words,
@@ -47,6 +55,7 @@ const useGameStore = create((set, get) => ({
 
   poseDetected: false,
   currentPose: null,
+  currentHands: null,
   isActionCorrect: false,
 
   showStarEffect: false,
@@ -71,7 +80,8 @@ const useGameStore = create((set, get) => ({
   /** @param {{ mode?: 'classic'|'balloon'|'fruit', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
   startGame: (options = {}) => {
     const mode = options.mode ?? 'classic'
-    const arcadeVersus = !!(options.versus ?? options.fruitVersus)
+    const requestedVersus = !!(options.versus ?? options.fruitVersus)
+    const arcadeVersus = mode === 'fruit' ? false : requestedVersus
 
     if (mode === 'classic') {
       set({
@@ -93,7 +103,8 @@ const useGameStore = create((set, get) => ({
     }
 
     const pool = shuffleWords(grade5bData.words)
-    const take = Math.min(ARCADE_ROUND_SIZE, pool.length)
+    const roundSize = ARCADE_ROUND_SIZE_BY_MODE[mode] || ARCADE_ROUND_SIZE_BY_MODE.balloon
+    const take = Math.min(roundSize, pool.length)
     const session = pool.slice(0, take)
 
     set({
@@ -131,6 +142,7 @@ const useGameStore = create((set, get) => ({
       allWords,
       hitWords: result.poppedWords || [],
       missedWords,
+      spellingResults: result.spellingResults || [],
     })
 
     set({
@@ -231,6 +243,7 @@ const useGameStore = create((set, get) => ({
 
   resetGame: () => {
     latestPose = null
+    latestHands = null
     set({
       gameState: 'idle',
       playMode: 'classic',
@@ -246,6 +259,7 @@ const useGameStore = create((set, get) => ({
       showSuccessAnimation: false,
       lastEncouragementInfo: null,
       currentPose: null,
+      currentHands: null,
       poseDetected: false,
     })
   },
@@ -261,6 +275,12 @@ const useGameStore = create((set, get) => ({
     latestPose = pose
     if (options.publish === false) return
     set({ currentPose: pose, poseDetected: !!pose })
+  },
+
+  setHands: (hands, options = {}) => {
+    latestHands = hands
+    if (options.publish === false) return
+    set({ currentHands: hands })
   },
 
   setCameraReady: (ready) => set({ cameraReady: ready }),

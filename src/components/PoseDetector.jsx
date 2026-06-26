@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { Pose } from '@mediapipe/pose'
+import { Hands } from '@mediapipe/hands'
 import useGameStore from '../store/gameStore'
 import { lmToCanvasMirroredDrawingPx } from '../utils/cameraLandmarks'
 
@@ -52,6 +53,8 @@ const KEY_BODY_POINTS = [
 ]
 
 const POSE_PUBLISH_INTERVAL_MS = 90
+const HANDS_PUBLISH_INTERVAL_MS = 55
+const HANDS_SEND_INTERVAL_MS = 55
 
 function isArcadeMode(gameState, playMode) {
   return gameState === 'arcade_playing' && (playMode === 'balloon' || playMode === 'fruit')
@@ -178,9 +181,13 @@ function PoseDetector() {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const poseRef = useRef(null)
+  const handsRef = useRef(null)
   const animationRef = useRef(null)
   const poseStatusRef = useRef('')
   const lastPosePublishRef = useRef(0)
+  const lastHandsPublishRef = useRef(0)
+  const lastHandsSendRef = useRef(0)
+  const handsActiveRef = useRef(false)
   const actionLockRef = useRef(null)
 
   const [isLoading, setIsLoading] = useState(true)
@@ -189,6 +196,7 @@ function PoseDetector() {
   const gameState = useGameStore((s) => s.gameState)
   const playMode = useGameStore((s) => s.playMode)
   const setPose = useGameStore((s) => s.setPose)
+  const setHands = useGameStore((s) => s.setHands)
   const setCameraReady = useGameStore((s) => s.setCameraReady)
   const setPoseVideoIntrinsics = useGameStore((s) => s.setPoseVideoIntrinsics)
   const completeAction = useGameStore((s) => s.completeAction)
@@ -360,11 +368,7 @@ function PoseDetector() {
 
         if (gs.gameState === 'arcade_playing') {
           if (gs.playMode === 'fruit') {
-            updatePoseStatus(
-              gs.arcadeVersus
-                ? '🍉 双人：画面左侧=P1｜画面右侧=P2 · 挥手切水果'
-                : '🍉 挥动手臂或伸手切开水果单词！',
-            )
+            updatePoseStatus('✍️ 左手张开写字｜握拳提交｜双手交叉重写')
           } else if (gs.arcadeVersus) {
             updatePoseStatus('🎈 双人：画面左侧=P1｜画面右侧=P2 · 击中气球朗读单词')
           } else {
@@ -408,6 +412,36 @@ function PoseDetector() {
     [setPose, checkAction, completeAction, triggerStarEffect, updatePoseStatus],
   )
 
+  const onHandsResults = useCallback(
+    (results) => {
+      const now = performance.now()
+      const shouldPublishHands = now - lastHandsPublishRef.current >= HANDS_PUBLISH_INTERVAL_MS
+      if (shouldPublishHands) {
+        lastHandsPublishRef.current = now
+      }
+
+      const landmarks = results.multiHandLandmarks || []
+      const handedness = (results.multiHandedness || []).map((hand) => {
+        const rawLabel = hand.label
+        return {
+          ...hand,
+          rawLabel,
+          label: rawLabel === 'Left' ? 'Right' : rawLabel === 'Right' ? 'Left' : rawLabel,
+        }
+      })
+
+      setHands(
+        {
+          multiHandLandmarks: landmarks,
+          multiHandedness: handedness,
+          updatedAt: now,
+        },
+        { publish: shouldPublishHands },
+      )
+    },
+    [setHands],
+  )
+
   useEffect(() => {
     let isMounted = true
 
@@ -433,6 +467,31 @@ function PoseDetector() {
             onResults(results)
           }
         })
+
+        try {
+          handsRef.current = new Hands({
+            locateFile: (file) => {
+              return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            },
+          })
+
+          handsRef.current.setOptions({
+            selfieMode: false,
+            maxNumHands: 2,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.55,
+            minTrackingConfidence: 0.5,
+          })
+
+          handsRef.current.onResults((results) => {
+            if (isMounted) {
+              onHandsResults(results)
+            }
+          })
+        } catch (error) {
+          console.error('❌ Error initializing hand detection:', error)
+          handsRef.current = null
+        }
 
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -465,6 +524,26 @@ function PoseDetector() {
                   if (videoEl && poseRef.current && videoEl.readyState === 4) {
                     try {
                       await poseRef.current.send({ image: videoEl })
+                      const gs = useGameStore.getState()
+                      const wantsHands =
+                        gs.gameState === 'arcade_playing' && gs.playMode === 'fruit'
+                      const now = performance.now()
+
+                      if (!wantsHands && handsActiveRef.current) {
+                        handsActiveRef.current = false
+                        lastHandsPublishRef.current = 0
+                        setHands(null)
+                      }
+
+                      if (
+                        wantsHands &&
+                        handsRef.current &&
+                        now - lastHandsSendRef.current >= HANDS_SEND_INTERVAL_MS
+                      ) {
+                        handsActiveRef.current = true
+                        lastHandsSendRef.current = now
+                        await handsRef.current.send({ image: videoEl })
+                      }
                     } catch (error) {
                       console.error('❌ Pose detection error:', error)
                     }
@@ -520,8 +599,11 @@ function PoseDetector() {
         const tracks = videoRef.current.srcObject.getTracks()
         tracks.forEach((track) => track.stop())
       }
+      setHands(null)
+      poseRef.current?.close?.().catch(() => {})
+      handsRef.current?.close?.().catch(() => {})
     }
-  }, [onResults, setCameraReady, setPoseVideoIntrinsics])
+  }, [onResults, onHandsResults, setCameraReady, setHands, setPoseVideoIntrinsics])
 
   const wrapperClass = arcadeFullscreen ? 'pose-arcade-fullscreen' : 'pose-detector-container'
 

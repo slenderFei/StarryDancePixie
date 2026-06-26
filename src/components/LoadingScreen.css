@@ -395,6 +395,10 @@
   background: linear-gradient(135deg, #ff6fae, #8b5cf6);
 }
 
+.mode-sub-btn.spelling-start {
+  background: linear-gradient(135deg, #35d6b4, #2364ff);
+}
+
 .mode-wait-muted {
   font-size: 13px;
   color: rgba(226, 232, 240, 0.68);

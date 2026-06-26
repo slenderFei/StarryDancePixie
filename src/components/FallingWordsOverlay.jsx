@@ -15,22 +15,16 @@ const POSE_LM = {
 const LEFT_BODY = [POSE_LM.LEFT_WRIST, POSE_LM.LEFT_ELBOW]
 const RIGHT_BODY = [POSE_LM.RIGHT_WRIST, POSE_LM.RIGHT_ELBOW]
 
-const FRUIT_SPRITES = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍉', '🍑', '🍒']
-
 const VIS_MIN = 0.45
 
-/** 气球同屏适中防卡顿；水果用更快节奏，避免长时间无新目标 */
+/** 气球同屏适中防卡顿 */
 const BALLOON_MAX_AIRBORNE = 7
-const FRUIT_MAX_AIRBORNE = 7
 
 const BALLOON_SPAWN_GAP_MIN = 950
 const BALLOON_SPAWN_GAP_EXTRA = 750
-const FRUIT_SPAWN_GAP_MIN = 650
-const FRUIT_SPAWN_GAP_EXTRA = 520
 
-/** 气球约 14–18s 落穿一屏；水果约 8–12s，更像切水果节奏 */
+/** 气球约 14–18s 落穿一屏 */
 const BALLOON_FALL_CROSS_MS = 15500
-const FRUIT_FALL_CROSS_MS = 9000
 const ARCADE_HIT_COOLDOWN_MS = 240
 const ARCADE_SPEECH_GAP_MS = 720
 
@@ -62,10 +56,10 @@ function arcadeSpawnConfig(isBalloonMode) {
     }
   }
   return {
-    maxAirborne: FRUIT_MAX_AIRBORNE,
-    spawnGapMin: FRUIT_SPAWN_GAP_MIN,
-    spawnGapExtra: FRUIT_SPAWN_GAP_EXTRA,
-    fallCrossMs: FRUIT_FALL_CROSS_MS,
+    maxAirborne: BALLOON_MAX_AIRBORNE,
+    spawnGapMin: BALLOON_SPAWN_GAP_MIN,
+    spawnGapExtra: BALLOON_SPAWN_GAP_EXTRA,
+    fallCrossMs: BALLOON_FALL_CROSS_MS,
   }
 }
 
@@ -253,7 +247,6 @@ function FallingWordsOverlay() {
         swayPx: 0,
         balloonVariant,
         sizeScale,
-        fruitEmoji: FRUIT_SPRITES[(Number(word.id) || spawnIdx) % FRUIT_SPRITES.length],
       })
 
       nextSpawnAtRef.current = now + cfg.spawnGapMin + Math.random() * cfg.spawnGapExtra
@@ -276,7 +269,7 @@ function FallingWordsOverlay() {
   )
 
   useEffect(() => {
-    if (gameState !== 'arcade_playing') return undefined
+    if (gameState !== 'arcade_playing' || playMode !== 'balloon') return undefined
 
     let raf = null
     let last = performance.now()
@@ -289,7 +282,7 @@ function FallingWordsOverlay() {
 
       const gs = useGameStore.getState()
       const landmarks = getLatestPose()
-      const useCoverHits = gs.playMode === 'balloon' || gs.playMode === 'fruit'
+      const useCoverHits = gs.playMode === 'balloon'
       const iw = gs.poseVideoIntrinsics?.width ?? 0
       const ih = gs.poseVideoIntrinsics?.height ?? 0
 
@@ -298,7 +291,7 @@ function FallingWordsOverlay() {
       const vw = innerWidth || 390
       const vh = innerHeight || 820
       const minVH = Math.min(vw, vh)
-      const hitR = minVH * (gs.playMode === 'fruit' ? 0.12 : 0.1)
+      const hitR = minVH * 0.1
       const hitR2 = hitR * hitR
       const cxOffset = isBalloon ? 59 : 60
       const cyOffset = isBalloon ? 70 : 59
@@ -398,6 +391,7 @@ function FallingWordsOverlay() {
     }
   }, [
     gameState,
+    playMode,
     arcadeVersus,
     trySpawn,
     endRun,
@@ -409,7 +403,7 @@ function FallingWordsOverlay() {
     clearPopTimeouts,
   ])
 
-  if (gameState !== 'arcade_playing') return null
+  if (gameState !== 'arcade_playing' || playMode !== 'balloon') return null
 
   const itemsRender = renderItems
   const st = hudStats
@@ -439,13 +433,7 @@ function FallingWordsOverlay() {
   return (
     <div className="falling-words-overlay" aria-hidden="true">
       <div className="falling-hud">
-        {playMode === 'balloon'
-          ? arcadeVersus
-            ? '🎈 气球跳跳碰 · 双人'
-            : '🎈 气球跳跳碰 · 单机'
-          : arcadeVersus
-            ? '🍉 单词切水果 · 双人'
-            : '🍉 单词切水果'}
+        {arcadeVersus ? '🎈 气球跳跳碰 · 双人' : '🎈 气球跳跳碰 · 单机'}
         {arcadeVersus && <span>画面左侧=P1｜画面右侧=P2</span>}
         {hudVersus}
       </div>
@@ -478,7 +466,6 @@ function FallingWordsOverlay() {
             }}
           >
             {isBalloon && <span className="balloon-shine" aria-hidden="true" />}
-            {!isBalloon && <span className="fruit-emoji">{it.fruitEmoji}</span>}
             <span className="falling-word">{it.word.word}</span>
           </div>
         )

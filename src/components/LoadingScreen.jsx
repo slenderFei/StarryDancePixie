@@ -136,28 +136,19 @@ function LoadingScreen() {
               className={`mode-card arcade-versus-slot ${cameraReady ? 'ready' : ''}`}
               aria-disabled={!cameraReady}
             >
-              <span className="mode-icon">🍉</span>
-              <span className="mode-title">单词切水果</span>
+              <span className="mode-icon">✍️</span>
+              <span className="mode-title">单词拼写</span>
               <span className="mode-desc">
-                全屏摄像头上切开落下的水果单词，同样从词池抽取 60 词。双人赛：画面左侧为 P1、右侧为
-                P2（单摄像头）。
+                只看中文释义，用右手食指在摄像头画面中拼出英文单词。一局随机 5 词。
               </span>
               <div className="versus-actions">
                 <button
                   type="button"
-                  className="mode-sub-btn"
+                  className="mode-sub-btn spelling-start"
                   onClick={() => startGame({ mode: 'fruit', versus: false })}
                   disabled={!cameraReady}
                 >
-                  单机
-                </button>
-                <button
-                  type="button"
-                  className="mode-sub-btn accent"
-                  onClick={() => startGame({ mode: 'fruit', versus: true })}
-                  disabled={!cameraReady}
-                >
-                  双人竞赛
+                  开始拼写
                 </button>
               </div>
             </div>
