@@ -24,6 +24,25 @@ function compactWord(word) {
     balloonType: word.balloonType || '',
     balloonLabel: word.balloonLabel || '',
     hitBy: word.hitBy || '',
+    source: word.source || '',
+  }
+}
+
+function compactPlatformerStats(stats) {
+  if (!stats) return null
+  return {
+    levelId: stats.levelId || '',
+    completed: !!stats.completed,
+    maxX: Number(stats.maxX || 0),
+    coinsCollected: Array.isArray(stats.coinsCollected) ? stats.coinsCollected : [],
+    enemiesDefeated: Array.isArray(stats.enemiesDefeated) ? stats.enemiesDefeated : [],
+    wordBoxResults: Array.isArray(stats.wordBoxResults)
+      ? stats.wordBoxResults.map((result) => ({
+          id: result.id,
+          word: result.word || '',
+          learned: !!result.learned,
+        }))
+      : [],
   }
 }
 
@@ -91,6 +110,11 @@ export function saveGameRecord(record) {
     bestCombo: Number(record.bestCombo || 0),
     player1Score: Number(record.player1Score || 0),
     player2Score: Number(record.player2Score || 0),
+    coins: Number(record.coins || 0),
+    completed: !!record.completed,
+    damageCount: Number(record.damageCount || 0),
+    deathCount: Number(record.deathCount || 0),
+    platformerStats: compactPlatformerStats(record.platformerStats),
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),
     missedWords: (record.missedWords || []).map(compactWord).filter(Boolean),

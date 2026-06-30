@@ -18,6 +18,7 @@ const ARCADE_ROUND_SIZE_BY_MODE = {
   balloon: 60,
   fruit: 5,
   rope: 0,
+  platformer: 5,
 }
 
 let latestPose = null
@@ -36,7 +37,7 @@ export function getLatestHands() {
 const useGameStore = create((set, get) => ({
   gameState: 'idle',
 
-  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） | rope */
+  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） | rope | platformer */
   playMode: 'classic',
 
   /** 体感街机对战：双人时左手侧计 P1、右手侧计 P2（单人摄像头） */
@@ -78,11 +79,12 @@ const useGameStore = create((set, get) => ({
           : { width: 0, height: 0 },
     }),
 
-  /** @param {{ mode?: 'classic'|'balloon'|'fruit'|'rope', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
+  /** @param {{ mode?: 'classic'|'balloon'|'fruit'|'rope'|'platformer', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
   startGame: (options = {}) => {
     const mode = options.mode ?? 'classic'
     const requestedVersus = !!(options.versus ?? options.fruitVersus)
-    const arcadeVersus = mode === 'fruit' || mode === 'rope' ? false : requestedVersus
+    const arcadeVersus =
+      mode === 'fruit' || mode === 'rope' || mode === 'platformer' ? false : requestedVersus
 
     if (mode === 'classic') {
       set({
@@ -159,6 +161,11 @@ const useGameStore = create((set, get) => ({
       bestCombo: result.bestCombo,
       player1Score: result.player1Score,
       player2Score: result.player2Score,
+      coins: result.coins,
+      completed: result.completed,
+      damageCount: result.damageCount,
+      deathCount: result.deathCount,
+      platformerStats: result.platformerStats,
     })
 
     set({

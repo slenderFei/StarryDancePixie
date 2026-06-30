@@ -59,7 +59,10 @@ const HANDS_SEND_INTERVAL_MS = 55
 function isArcadeMode(gameState, playMode) {
   return (
     gameState === 'arcade_playing' &&
-    (playMode === 'balloon' || playMode === 'fruit' || playMode === 'rope')
+    (playMode === 'balloon' ||
+      playMode === 'fruit' ||
+      playMode === 'rope' ||
+      playMode === 'platformer')
   )
 }
 
@@ -374,6 +377,8 @@ function PoseDetector() {
             updatePoseStatus('✍️ 左手张开写字｜握拳提交｜双手交叉重写')
           } else if (gs.playMode === 'rope') {
             updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
+          } else if (gs.playMode === 'platformer') {
+            updatePoseStatus('🏃 星光大冒险：左右倾斜移动，举起双手跳跃')
           } else if (gs.arcadeVersus) {
             updatePoseStatus('🎈 双人：左侧=P1｜右侧=P2 · 击中高分气球抢分')
           } else {

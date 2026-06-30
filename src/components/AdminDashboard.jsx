@@ -7,6 +7,7 @@ function modeName(record) {
   if (record.playMode === 'balloon') return record.arcadeVersus ? '气球双人' : '气球单机'
   if (record.playMode === 'fruit') return '单词拼写'
   if (record.playMode === 'rope') return '虚拟跳绳'
+  if (record.playMode === 'platformer') return '星光大冒险 · 横版闯关'
   return '体感学单词'
 }
 
@@ -216,6 +217,8 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       {formatTime(record.createdAt)} ·{' '}
                       {record.playMode === 'rope'
                         ? `${record.jumpCount || record.rankScore || 0} 次`
+                        : record.playMode === 'platformer'
+                          ? `${record.score || record.rankScore || 0}分 · ${record.hitCount}/${record.totalWords}`
                         : record.playMode === 'balloon'
                           ? `${record.score || 0}分 · ${record.hitCount}/${record.totalWords}`
                           : `${record.hitCount}/${record.totalWords}`}
@@ -232,7 +235,9 @@ function AdminDashboard({ onExit, onSessionChange }) {
                 <>
                   <div
                     className={`record-summary ${
-                      selectedRecord.playMode === 'balloon' ? 'record-summary-wide' : ''
+                      selectedRecord.playMode === 'balloon' || selectedRecord.playMode === 'platformer'
+                        ? 'record-summary-wide'
+                        : ''
                     }`}
                   >
                     <div>
@@ -251,18 +256,24 @@ function AdminDashboard({ onExit, onSessionChange }) {
                           : `${selectedRecord.hitCount}/${selectedRecord.totalWords}`}
                       </strong>
                     </div>
-                    {selectedRecord.playMode === 'balloon' && (
+                    {(selectedRecord.playMode === 'balloon' || selectedRecord.playMode === 'platformer') && (
                       <div>
                         <span>得分</span>
-                        <strong>{selectedRecord.score || 0} 分</strong>
+                        <strong>{selectedRecord.score || selectedRecord.rankScore || 0} 分</strong>
                       </div>
                     )}
                     <div>
-                      <span>{selectedRecord.playMode === 'rope' ? '时长' : '漏掉'}</span>
+                      <span>
+                        {selectedRecord.playMode === 'rope' || selectedRecord.playMode === 'platformer'
+                          ? '时长'
+                          : '漏掉'}
+                      </span>
                       <strong>
                         {selectedRecord.playMode === 'rope'
                           ? `${selectedRecord.durationSeconds || 60} 秒`
-                          : selectedRecord.missedCount}
+                          : selectedRecord.playMode === 'platformer'
+                            ? `${selectedRecord.durationSeconds || 0} 秒`
+                            : selectedRecord.missedCount}
                       </strong>
                     </div>
                   </div>
@@ -273,6 +284,20 @@ function AdminDashboard({ onExit, onSessionChange }) {
                         <span>60 秒 {selectedRecord.jumpCount || selectedRecord.rankScore || 0} 次</span>
                       </div>
                     </div>
+                  ) : selectedRecord.playMode === 'platformer' ? (
+                    <>
+                      <div className="admin-word-list">
+                        <h4>冒险成绩</h4>
+                        <div>
+                          <span>金币 {selectedRecord.coins || 0}</span>
+                          <span>受伤 {selectedRecord.damageCount || 0} 次</span>
+                          <span>{selectedRecord.completed ? '已通关' : '未通关'}</span>
+                        </div>
+                      </div>
+                      <WordList title="本关全量单词" words={selectedRecord.allWords} />
+                      <WordList title="学到的单词" words={selectedRecord.hitWords} />
+                      <WordList title="未完成单词" words={selectedRecord.missedWords} />
+                    </>
                   ) : (
                     <>
                       <WordList title="本局全量单词" words={selectedRecord.allWords} />

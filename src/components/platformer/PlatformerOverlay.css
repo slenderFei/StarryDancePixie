@@ -1,0 +1,217 @@
+.platformer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 112;
+  overflow: hidden;
+  pointer-events: none;
+  color: #f8fbff;
+}
+
+.platformer-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(7, 12, 26, 0.2), rgba(7, 12, 26, 0.02) 44%, rgba(7, 12, 26, 0.42)),
+    radial-gradient(circle at 50% 76%, rgba(250, 204, 21, 0.14), transparent 32%);
+  pointer-events: none;
+}
+
+.platformer-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100svh;
+}
+
+.platformer-hud {
+  position: absolute;
+  top: max(92px, calc(env(safe-area-inset-top, 0px) + 78px));
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(82px, 1fr));
+  gap: 8px;
+  width: min(94vw, 720px);
+}
+
+.platformer-hud div,
+.platformer-status,
+.platformer-ready,
+.platformer-word-card,
+.platformer-controls {
+  border-radius: 8px;
+  background: rgba(9, 14, 31, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24);
+}
+
+.platformer-hud div {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: 70px;
+  padding: 9px;
+}
+
+.platformer-hud span,
+.platformer-status em,
+.platformer-ready span,
+.platformer-word-card span,
+.platformer-word-card p {
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 12px;
+  font-weight: 850;
+  font-style: normal;
+}
+
+.platformer-hud strong {
+  color: #fef9c3;
+  font-size: clamp(20px, 3vw, 34px);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.platformer-status {
+  position: absolute;
+  left: 50%;
+  bottom: max(76px, env(safe-area-inset-bottom));
+  z-index: 3;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.platformer-status span {
+  color: #fff;
+}
+
+.platformer-ready {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  min-width: min(72vw, 320px);
+  gap: 10px;
+  padding: 22px 28px;
+}
+
+.platformer-ready strong {
+  color: #fef08a;
+  font-size: clamp(48px, 10vw, 92px);
+  line-height: 0.92;
+  font-weight: 950;
+  text-shadow: 0 0 30px rgba(250, 204, 21, 0.44);
+}
+
+.platformer-word-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(86vw, 430px);
+  padding: 24px;
+  text-align: center;
+}
+
+.platformer-word-card strong {
+  color: #fef9c3;
+  font-size: clamp(38px, 8vw, 68px);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.platformer-word-card em {
+  color: #a7f3d0;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.platformer-word-card p {
+  margin: 4px 0 0;
+}
+
+.platformer-controls {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  max-width: min(92vw, 420px);
+  padding: 10px;
+}
+
+.platformer-controls span {
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 760px) {
+  .platformer-hud {
+    top: max(82px, calc(env(safe-area-inset-top, 0px) + 68px));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    width: min(96vw, 720px);
+  }
+
+  .platformer-hud div {
+    min-height: 58px;
+    padding: 7px 4px;
+  }
+
+  .platformer-hud span {
+    font-size: 10px;
+  }
+
+  .platformer-hud strong {
+    font-size: clamp(15px, 5vw, 24px);
+  }
+
+  .platformer-status {
+    bottom: max(88px, env(safe-area-inset-bottom));
+    width: min(92vw, 420px);
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .platformer-controls {
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    justify-content: center;
+  }
+}
+
+@media (max-height: 620px) {
+  .platformer-hud {
+    top: max(72px, calc(env(safe-area-inset-top, 0px) + 60px));
+  }
+
+  .platformer-controls {
+    display: none;
+  }
+}

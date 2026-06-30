@@ -15,6 +15,7 @@ const PoseDetector = lazy(() => import('./components/PoseDetector'))
 const FallingWordsOverlay = lazy(() => import('./components/FallingWordsOverlay'))
 const SpellingWordsOverlay = lazy(() => import('./components/SpellingWordsOverlay'))
 const JumpRopeOverlay = lazy(() => import('./components/JumpRopeOverlay'))
+const PlatformerOverlay = lazy(() => import('./components/platformer/PlatformerOverlay'))
 
 function App() {
   const gameState = useGameStore((s) => s.gameState)
@@ -33,7 +34,11 @@ function App() {
   const isArcadePlaying = gameState === 'arcade_playing'
   const isPlaying = isClassicPlaying || isArcadePlaying
   const hideCanvasForArcade =
-    isArcadePlaying && (playMode === 'balloon' || playMode === 'fruit' || playMode === 'rope')
+    isArcadePlaying &&
+    (playMode === 'balloon' ||
+      playMode === 'fruit' ||
+      playMode === 'rope' ||
+      playMode === 'platformer')
   const shouldRenderCanvas = isPlaying && !hideCanvasForArcade
   
   // 初始化语音合成（某些浏览器需要）
@@ -115,6 +120,12 @@ function App() {
       {isArcadePlaying && playMode === 'rope' && (
         <Suspense fallback={null}>
           <JumpRopeOverlay />
+        </Suspense>
+      )}
+
+      {isArcadePlaying && playMode === 'platformer' && (
+        <Suspense fallback={null}>
+          <PlatformerOverlay />
         </Suspense>
       )}
 
