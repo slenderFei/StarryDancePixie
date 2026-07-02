@@ -75,6 +75,25 @@ function formatTime(ms) {
   return Math.max(0, Math.ceil(ms / 1000))
 }
 
+function formatPace(count, roundStartedAt) {
+  if (!roundStartedAt || count <= 0) return 0
+  const elapsedSeconds = Math.max(1, (performance.now() - roundStartedAt) / 1000)
+  return Math.round((count / elapsedSeconds) * 60)
+}
+
+function rankForScore(leaderboard, score) {
+  if (!score) return leaderboard.length ? leaderboard.length + 1 : 1
+  return leaderboard.filter((entry) => Number(entry.jumpCount || 0) > score).length + 1
+}
+
+function gradeForCount(count) {
+  if (count >= 140) return 'S+'
+  if (count >= 110) return 'S'
+  if (count >= 85) return 'A'
+  if (count >= 60) return 'B'
+  return 'C'
+}
+
 function JumpRopeOverlay() {
   const finishArcade = useGameStore((s) => s.finishArcade)
   const gameState = useGameStore((s) => s.gameState)
@@ -92,6 +111,10 @@ function JumpRopeOverlay() {
     quality: 0,
     calibrationProgress: 0,
     bestScore: 0,
+    combo: 0,
+    bestCombo: 0,
+    pace: 0,
+    rankPreview: 1,
     calibrated: false,
     leaderboard: [],
   })
@@ -122,6 +145,10 @@ function JumpRopeOverlay() {
       quality: s.quality,
       calibrationProgress: s.calibrationProgress,
       bestScore: Math.max(s.bestScore, s.count),
+      combo: s.combo,
+      bestCombo: Math.max(s.bestCombo, s.combo),
+      pace: formatPace(s.count, s.roundStartedAt),
+      rankPreview: rankForScore(s.leaderboard, s.count),
       calibrated: s.calibrated,
       leaderboard: s.leaderboard,
     })
@@ -169,6 +196,26 @@ function JumpRopeOverlay() {
     const leftX = centerX - ropeWidth / 2
     const rightX = centerX + ropeWidth / 2
     const readyLineY = groundY - (s.airThresholdPx || 36)
+
+    const stage = ctx.createRadialGradient(centerX, groundY, 12, centerX, groundY, Math.max(vw, vh) * 0.58)
+    stage.addColorStop(0, 'rgba(45, 212, 255, 0.14)')
+    stage.addColorStop(0.48, 'rgba(15, 23, 42, 0.06)')
+    stage.addColorStop(1, 'rgba(15, 23, 42, 0)')
+    ctx.fillStyle = stage
+    ctx.fillRect(0, 0, vw, vh)
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.34)'
+    ctx.beginPath()
+    ctx.ellipse(centerX, groundY + 18, ropeWidth * 0.44, Math.max(16, ropeHeight * 0.08), 0, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.28)'
+    ctx.lineWidth = 2
+    for (let i = 0; i < 3; i += 1) {
+      ctx.beginPath()
+      ctx.ellipse(centerX, groundY + 18, ropeWidth * (0.24 + i * 0.1), 14 + i * 11, 0, 0, Math.PI * 2)
+      ctx.stroke()
+    }
 
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -219,6 +266,23 @@ function JumpRopeOverlay() {
       ctx.arc(foot.x, foot.y, 12 + Math.min(12, lift * 0.09), 0, Math.PI * 2)
       ctx.fill()
     }
+
+    s.jumpBursts = (s.jumpBursts || []).filter((burst) => now - burst.createdAt < 620)
+    s.jumpBursts.forEach((burst) => {
+      const age = (now - burst.createdAt) / 620
+      const radius = 18 + age * 58
+      ctx.globalAlpha = 1 - age
+      ctx.strokeStyle = burst.combo >= 10 ? '#fef08a' : '#67e8f9'
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.arc(burst.x, burst.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = burst.combo >= 10 ? '#fef9c3' : '#cffafe'
+      ctx.font = '900 22px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('+1', burst.x, burst.y - radius * 0.45)
+      ctx.globalAlpha = 1
+    })
   }, [])
 
   const finishRun = useCallback(() => {
@@ -236,6 +300,8 @@ function JumpRopeOverlay() {
       jumpCount: s.count,
       durationSeconds: 60,
       rankScore: s.count,
+      score: s.count,
+      bestCombo: s.bestCombo,
     })
   }, [finishArcade])
 
@@ -265,6 +331,8 @@ function JumpRopeOverlay() {
       calibrationProgress: 0,
       bestScore: leaderboard[0]?.jumpCount || 0,
       count: 0,
+      combo: 0,
+      bestCombo: 0,
       inAir: false,
       airborneStartedAt: 0,
       jumpPeakLift: 0,
@@ -273,6 +341,7 @@ function JumpRopeOverlay() {
       lastPublishAt: 0,
       status: '校准中',
       leaderboard,
+      jumpBursts: [],
       finished: false,
     }
     resizeCanvas()
@@ -460,19 +529,30 @@ function JumpRopeOverlay() {
           s.inAir = false
           s.airborneStartedAt = 0
           if (enoughAirTime && enoughLift) {
+            const nextCombo = gap <= MAX_JUMP_GAP_MS ? s.combo + 1 : 1
             s.lastJumpAt = now
             s.count += 1
+            s.combo = nextCombo
+            s.bestCombo = Math.max(s.bestCombo, s.combo)
             s.statusHoldUntil = now + 420
             s.jumpFlashUntil = now + 240
-            s.status = '计数 +1'
+            s.status = s.combo >= 10 ? `${s.combo} 连击` : '计数 +1'
+            s.jumpBursts.push({
+              x: foot?.x || vw / 2,
+              y: foot?.y || vh * 0.76,
+              combo: s.combo,
+              createdAt: now,
+            })
             playSuccessTone(Math.min(5, 1 + (s.count % 5)))
           } else {
+            s.combo = 0
             s.statusHoldUntil = now + 320
             s.status = '再跳高一点'
           }
           s.jumpPeakLift = 0
           s.jumpPeakHipLift = 0
         } else if (!s.inAir && now > (s.statusHoldUntil || 0)) {
+          if (gap > MAX_JUMP_GAP_MS && s.combo > 0) s.combo = 0
           s.status = '准备'
         }
 
@@ -506,23 +586,61 @@ function JumpRopeOverlay() {
 
   if (gameState !== 'arcade_playing' || playMode !== 'rope') return null
 
+  const timeProgress = clamp(ui.secondsLeft / 60, 0, 1)
+  const grade = gradeForCount(ui.count)
+  const topThree = ui.leaderboard.slice(0, 3)
+
   return (
     <div className="jump-rope-overlay">
       <canvas ref={canvasRef} className="jump-rope-canvas" />
-      <section className="jump-rope-hud" aria-label="虚拟跳绳">
-        <div className="jump-rope-meter">
-          <span>倒计时</span>
+      <section className="jump-rope-hud" aria-label="虚拟跳绳挑战">
+        <div className="jump-rope-title">
+          <span>ROPE CHALLENGE</span>
+          <strong>虚拟跳绳挑战</strong>
+        </div>
+        <div
+          className="jump-rope-timer"
+          style={{ '--rope-progress': `${timeProgress * 360}deg` }}
+        >
+          <span>TIME</span>
           <strong>{ui.secondsLeft}</strong>
         </div>
-        <div className="jump-rope-count">
-          <span>次数</span>
-          <strong>{ui.count}</strong>
-          <em>{ui.status}</em>
+        <div className="jump-rope-mode-switch">
+          <span className="active">SOLO</span>
+          <span>DUO</span>
         </div>
-        <div className="jump-rope-meter">
-          <span>入镜</span>
-          <strong>{ui.quality}%</strong>
-          <em>最佳 {ui.bestScore}</em>
+      </section>
+
+      <section className="jump-rope-scorecard">
+        <span className="score-label">JUMPS</span>
+        <strong>{ui.count}</strong>
+        <em>{ui.status}</em>
+        <div className="jump-rope-combo">
+          <span>{ui.combo}</span>
+          <small>COMBO</small>
+        </div>
+      </section>
+
+      <section className="jump-rope-stats" aria-label="跳绳数据">
+        <div>
+          <span>配速</span>
+          <strong>{ui.pace}</strong>
+          <em>次/分</em>
+        </div>
+        <div>
+          <span>最佳</span>
+          <strong>{Math.max(ui.bestScore, ui.count)}</strong>
+          <em>个人/榜单</em>
+        </div>
+        <div>
+          <span>榜位</span>
+          <strong>#{ui.rankPreview}</strong>
+          <em>实时预估</em>
+        </div>
+        <div>
+          <span>评级</span>
+          <strong>{grade}</strong>
+          <em>挑战等级</em>
         </div>
       </section>
 
@@ -534,9 +652,12 @@ function JumpRopeOverlay() {
       )}
 
       <aside className="jump-rope-board">
-        <h3>排行榜</h3>
+        <div className="jump-rope-board-head">
+          <span>LIVE BOARD</span>
+          <strong>排行榜</strong>
+        </div>
         {ui.leaderboard.length ? (
-          ui.leaderboard.map((entry, index) => (
+          topThree.map((entry, index) => (
             <div key={entry.id} className="jump-rope-rank">
               <span>{index + 1}</span>
               <strong>{entry.username}</strong>
@@ -546,6 +667,12 @@ function JumpRopeOverlay() {
         ) : (
           <div className="jump-rope-empty">暂无成绩</div>
         )}
+      </aside>
+
+      <aside className="jump-rope-coach">
+        <span>入镜</span>
+        <strong>{ui.quality}%</strong>
+        <em>{ui.phase === 'active' ? '保持节奏' : ui.phase === 'calibrating' ? '站稳校准' : '准备起跳'}</em>
       </aside>
     </div>
   )

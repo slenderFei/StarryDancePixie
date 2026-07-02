@@ -282,6 +282,7 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       <h4>跳绳成绩</h4>
                       <div>
                         <span>60 秒 {selectedRecord.jumpCount || selectedRecord.rankScore || 0} 次</span>
+                        <span>最佳连击 {selectedRecord.bestCombo || 0}</span>
                       </div>
                     </div>
                   ) : selectedRecord.playMode === 'platformer' ? (

@@ -117,14 +117,14 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <span className="stat-icon">{isPlatformer ? '🏁' : '🏆'}</span>
               <span className="stat-value">
                 {isRope
-                  ? r.rankScore || r.jumpCount || 0
+                  ? r.bestCombo || r.rankScore || r.jumpCount || 0
                   : isBalloon
                     ? r.bestCombo || 0
                     : isPlatformer
                       ? platformerLevels
                       : `${rate}%`}
               </span>
-              <span className="stat-label">{isRope ? '榜单分' : isBalloon ? '最高连击' : isPlatformer ? '关卡' : '完成率'}</span>
+              <span className="stat-label">{isRope ? '最佳连击' : isBalloon ? '最高连击' : isPlatformer ? '关卡' : '完成率'}</span>
             </div>
           </div>
 
