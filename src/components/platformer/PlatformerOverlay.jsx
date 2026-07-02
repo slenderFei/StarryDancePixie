@@ -338,6 +338,96 @@ function drawStar(ctx, x, y, outer, inner, points = 5) {
   ctx.closePath()
 }
 
+function drawCalibrationGuide(ctx, vw, vh, pose, progress) {
+  const frameW = Math.min(vw * 0.72, 560)
+  const frameH = Math.min(vh * 0.54, 520)
+  const x = (vw - frameW) / 2
+  const y = Math.max(118, Math.min(vh - frameH - 112, (vh - frameH) / 2 + 22))
+  const ready = pose.ok && progress > 0.1
+  const guideColor = ready ? '#86efac' : '#67e8f9'
+  const centerX = x + frameW / 2
+
+  ctx.save()
+  roundedRect(ctx, x, y, frameW, frameH, 18)
+  ctx.clip()
+  ctx.clearRect(x - 2, y - 2, frameW + 4, frameH + 4)
+  ctx.restore()
+
+  ctx.save()
+  ctx.fillStyle = 'rgba(8, 13, 30, 0.18)'
+  roundedRect(ctx, x, y, frameW, frameH, 18)
+  ctx.fill()
+
+  ctx.strokeStyle = guideColor
+  ctx.lineWidth = 3
+  ctx.setLineDash([12, 8])
+  roundedRect(ctx, x, y, frameW, frameH, 18)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.58)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(centerX, y + frameH * 0.08)
+  ctx.lineTo(centerX, y + frameH * 0.92)
+  ctx.stroke()
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.72)'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(x + frameW * 0.18, y + frameH * 0.82)
+  ctx.lineTo(x + frameW * 0.82, y + frameH * 0.82)
+  ctx.stroke()
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
+  ctx.beginPath()
+  ctx.arc(centerX, y + frameH * 0.18, frameW * 0.07, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)'
+  ctx.lineWidth = 5
+  ctx.beginPath()
+  ctx.moveTo(centerX, y + frameH * 0.28)
+  ctx.lineTo(centerX, y + frameH * 0.58)
+  ctx.moveTo(x + frameW * 0.31, y + frameH * 0.36)
+  ctx.lineTo(x + frameW * 0.69, y + frameH * 0.36)
+  ctx.moveTo(centerX, y + frameH * 0.58)
+  ctx.lineTo(x + frameW * 0.36, y + frameH * 0.78)
+  ctx.moveTo(centerX, y + frameH * 0.58)
+  ctx.lineTo(x + frameW * 0.64, y + frameH * 0.78)
+  ctx.stroke()
+
+  ctx.fillStyle = 'rgba(254, 240, 138, 0.24)'
+  ctx.beginPath()
+  ctx.ellipse(x + frameW * 0.38, y + frameH * 0.84, frameW * 0.11, 10, 0, 0, Math.PI * 2)
+  ctx.ellipse(x + frameW * 0.62, y + frameH * 0.84, frameW * 0.11, 10, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  if (pose.ok) {
+    const dotX = clamp(pose.centerX * vw, x + 18, x + frameW - 18)
+    const dotY = clamp(pose.hipY * vh, y + 18, y + frameH - 18)
+    ctx.fillStyle = '#22c55e'
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, 10, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.38)'
+    ctx.lineWidth = 8
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, 18, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  const barW = frameW * 0.62
+  const barX = x + (frameW - barW) / 2
+  const barY = y + frameH + 18
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.72)'
+  roundedRect(ctx, barX, barY, barW, 12, 6)
+  ctx.fill()
+  ctx.fillStyle = ready ? '#86efac' : '#67e8f9'
+  roundedRect(ctx, barX, barY, barW * clamp(progress, 0, 1), 12, 6)
+  ctx.fill()
+  ctx.restore()
+}
+
 function PlatformerOverlay() {
   const finishArcade = useGameStore((s) => s.finishArcade)
   const arcadeSessionWords = useGameStore((s) => s.arcadeSessionWords)
@@ -361,6 +451,8 @@ function PlatformerOverlay() {
     totalWords: TOTAL_WORDS,
     secondsLeft: ROUND_SECONDS,
     quality: 0,
+    visibleCount: 0,
+    calibrationProgress: 0,
     challenge: null,
   })
 
@@ -396,6 +488,8 @@ function PlatformerOverlay() {
         ? Math.max(0, Math.ceil(ROUND_SECONDS - (performance.now() - s.startedAt) / 1000))
         : ROUND_SECONDS,
       quality: s.quality,
+      visibleCount: s.visibleCount || 0,
+      calibrationProgress: s.calibrationProgress || 0,
       challenge: s.challenge,
     })
   }, [])
@@ -560,6 +654,11 @@ function PlatformerOverlay() {
     ctx.lineTo(vw, vh)
     ctx.lineTo(0, vh)
     ctx.fill()
+
+    if (s.phase === 'calibrating') {
+      drawCalibrationGuide(ctx, vw, vh, s.poseSnapshot || { ok: false }, s.calibrationProgress || 0)
+      return
+    }
 
     if (s.levelIndex === 1) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
@@ -753,6 +852,9 @@ function PlatformerOverlay() {
       levelIndex: 0,
       levelsCompleted: 0,
       levelProgress: LEVELS.map(() => 0),
+      visibleCount: 0,
+      calibrationProgress: 0,
+      poseSnapshot: null,
       calibrationSamples: [],
       calibration: null,
       words: arcadeSessionWords.slice(0, TOTAL_WORDS),
@@ -801,6 +903,8 @@ function PlatformerOverlay() {
       const s = stateRef.current
       if (s?.phase === 'calibrating' && (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar')) {
         s.calibration = KEYBOARD_CALIBRATION
+        s.calibrationProgress = 1
+        s.visibleCount = 6
         startCountdown(s, performance.now(), '键盘模式准备')
         publish()
       }
@@ -831,10 +935,13 @@ function PlatformerOverlay() {
       last = now
       const pose = poseSnapshot(getLatestPose())
       s.quality = pose.quality || 0
+      s.visibleCount = pose.visibleCount || (pose.ok ? 6 : 0)
+      s.poseSnapshot = pose
 
       if (s.phase === 'calibrating') {
         if (pose.ok) {
           s.calibrationSamples.push(pose)
+          s.calibrationProgress = Math.min(1, s.calibrationSamples.length / CALIBRATION_FRAMES)
           s.status = `站稳校准 ${Math.min(s.calibrationSamples.length, CALIBRATION_FRAMES)}/${CALIBRATION_FRAMES}`
           if (s.calibrationSamples.length >= CALIBRATION_FRAMES) {
             s.calibration = {
@@ -846,6 +953,7 @@ function PlatformerOverlay() {
           }
         } else {
           s.calibrationSamples = []
+          s.calibrationProgress = 0
           s.status = '请全身入镜，或按 Enter 键盘体验'
         }
       } else if (s.phase === 'countdown') {
@@ -1040,9 +1148,10 @@ function PlatformerOverlay() {
   if (gameState !== 'arcade_playing' || playMode !== 'platformer') return null
 
   const challenge = ui.challenge
+  const calibrationPercent = Math.round((ui.calibrationProgress || 0) * 100)
 
   return (
-    <div className="platformer-overlay">
+    <div className={`platformer-overlay ${ui.phase === 'calibrating' ? 'is-calibrating' : ''}`}>
       <canvas ref={canvasRef} className="platformer-canvas" />
 
       <section className="platformer-hud" aria-label="星光大冒险">
@@ -1077,10 +1186,23 @@ function PlatformerOverlay() {
         <em>入镜 {ui.quality}%</em>
       </div>
 
-      {ui.phase !== 'playing' && ui.phase !== 'wordChallenge' && (
+      {ui.phase === 'calibrating' && (
+        <div className="platformer-calibration-panel">
+          <span>校准提示</span>
+          <strong>{calibrationPercent}%</strong>
+          <div className="platformer-calibration-meter">
+            <i style={{ width: `${calibrationPercent}%` }} />
+          </div>
+          <p className={ui.visibleCount >= 4 ? 'ready' : ''}>全身站进中央框</p>
+          <p className={ui.quality >= 66 ? 'ready' : ''}>头、肩、脚保持可见</p>
+          <p className={ui.calibrationProgress >= 0.5 ? 'ready' : ''}>站稳直到倒计时开始</p>
+        </div>
+      )}
+
+      {ui.phase === 'countdown' && (
         <div className="platformer-ready">
-          <span>{ui.phase === 'calibrating' ? '站稳校准' : ui.levelName}</span>
-          <strong>{ui.phase === 'calibrating' ? `${ui.quality}%` : ui.countdown}</strong>
+          <span>{ui.levelName}</span>
+          <strong>{ui.countdown}</strong>
         </div>
       )}
 

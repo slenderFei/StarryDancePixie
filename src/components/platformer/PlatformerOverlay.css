@@ -18,6 +18,12 @@
   pointer-events: none;
 }
 
+.platformer-overlay.is-calibrating::before {
+  background:
+    linear-gradient(180deg, rgba(7, 12, 26, 0.34), rgba(7, 12, 26, 0.08) 48%, rgba(7, 12, 26, 0.46)),
+    radial-gradient(circle at 50% 48%, transparent 0, transparent 33%, rgba(7, 12, 26, 0.26) 62%);
+}
+
 .platformer-canvas {
   position: absolute;
   inset: 0;
@@ -43,6 +49,7 @@
 .platformer-status,
 .platformer-ready,
 .platformer-word-card,
+.platformer-calibration-panel,
 .platformer-controls {
   border-radius: 8px;
   background: rgba(9, 14, 31, 0.64);
@@ -116,6 +123,73 @@
   text-shadow: 0 0 30px rgba(250, 204, 21, 0.44);
 }
 
+.platformer-calibration-panel {
+  position: absolute;
+  top: max(178px, calc(env(safe-area-inset-top, 0px) + 150px));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  width: min(260px, 38vw);
+  padding: 14px;
+}
+
+.platformer-calibration-panel span,
+.platformer-calibration-panel p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.platformer-calibration-panel strong {
+  color: #fef9c3;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.platformer-calibration-meter {
+  overflow: hidden;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.platformer-calibration-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #86efac);
+  transition: width 0.18s ease;
+}
+
+.platformer-calibration-panel p {
+  position: relative;
+  padding-left: 18px;
+}
+
+.platformer-calibration-panel p::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: rgba(148, 163, 184, 0.7);
+}
+
+.platformer-calibration-panel p.ready {
+  color: #bbf7d0;
+}
+
+.platformer-calibration-panel p.ready::before {
+  background: #22c55e;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.58);
+}
+
 .platformer-word-card {
   position: absolute;
   left: 50%;
@@ -170,6 +244,10 @@
   font-weight: 850;
 }
 
+.platformer-overlay.is-calibrating .platformer-controls {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .platformer-hud {
     top: max(82px, calc(env(safe-area-inset-top, 0px) + 68px));
@@ -196,6 +274,26 @@
     width: min(92vw, 420px);
     justify-content: center;
     font-size: 13px;
+  }
+
+  .platformer-calibration-panel {
+    top: auto;
+    left: 50%;
+    bottom: max(122px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(92vw, 360px);
+    grid-template-columns: 1fr auto;
+    gap: 7px 12px;
+  }
+
+  .platformer-calibration-panel .platformer-calibration-meter,
+  .platformer-calibration-panel p {
+    grid-column: 1 / -1;
+  }
+
+  .platformer-calibration-panel strong {
+    font-size: 28px;
+    text-align: right;
   }
 
   .platformer-controls {
