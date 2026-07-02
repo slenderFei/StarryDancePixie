@@ -180,7 +180,7 @@ function LoadingScreen() {
               <span className="mode-icon">🏃</span>
               <span className="mode-title">星光大冒险 · 横版闯关</span>
               <span className="mode-desc">
-                经典平台跳跃风格，用身体左右倾斜移动，举起双手跳跃，顶开单词方块通关。
+                三段原创横版关卡，用身体左右倾斜移动，举起双手跳跃，顶开单词方块通关。
               </span>
               <div className="versus-actions">
                 <button

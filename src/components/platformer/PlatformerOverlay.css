@@ -34,9 +34,9 @@
   z-index: 3;
   transform: translateX(-50%);
   display: grid;
-  grid-template-columns: repeat(5, minmax(82px, 1fr));
+  grid-template-columns: repeat(6, minmax(72px, 1fr));
   gap: 8px;
-  width: min(94vw, 720px);
+  width: min(94vw, 820px);
 }
 
 .platformer-hud div,
@@ -173,13 +173,13 @@
 @media (max-width: 760px) {
   .platformer-hud {
     top: max(82px, calc(env(safe-area-inset-top, 0px) + 68px));
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
-    width: min(96vw, 720px);
+    width: min(96vw, 560px);
   }
 
   .platformer-hud div {
-    min-height: 58px;
+    min-height: 50px;
     padding: 7px 4px;
   }
 

@@ -289,6 +289,11 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       <div className="admin-word-list">
                         <h4>冒险成绩</h4>
                         <div>
+                          <span>
+                            关卡{' '}
+                            {selectedRecord.platformerStats?.levelsCompleted || 0}/
+                            {selectedRecord.platformerStats?.totalLevels || 3}
+                          </span>
                           <span>金币 {selectedRecord.coins || 0}</span>
                           <span>受伤 {selectedRecord.damageCount || 0} 次</span>
                           <span>{selectedRecord.completed ? '已通关' : '未通关'}</span>

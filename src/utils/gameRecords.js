@@ -34,6 +34,11 @@ function compactPlatformerStats(stats) {
     levelId: stats.levelId || '',
     completed: !!stats.completed,
     maxX: Number(stats.maxX || 0),
+    levelsCompleted: Number(stats.levelsCompleted || 0),
+    totalLevels: Number(stats.totalLevels || 0),
+    levelProgress: Array.isArray(stats.levelProgress)
+      ? stats.levelProgress.map((progress) => Number(progress || 0))
+      : [],
     coinsCollected: Array.isArray(stats.coinsCollected) ? stats.coinsCollected : [],
     enemiesDefeated: Array.isArray(stats.enemiesDefeated) ? stats.enemiesDefeated : [],
     wordBoxResults: Array.isArray(stats.wordBoxResults)

@@ -73,12 +73,18 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
     const balloonScore = Number(r.score || 0)
     const platformerScore = Number(r.score || r.rankScore || 0)
+    const platformerStats = r.platformerStats || {}
+    const platformerLevels = platformerStats.totalLevels
+      ? `${platformerStats.levelsCompleted || 0}/${platformerStats.totalLevels}`
+      : r.completed
+        ? '3/3'
+        : '0/3'
 
     return (
       <div className="game-ui completion-screen">
         {accountActions}
         <div className="completion-card arcade-complete">
-          <h1 className="completion-title">🎯 一局结束啦！</h1>
+          <h1 className="completion-title">{isPlatformer && r.completed ? '🎯 全部通关！' : '🎯 一局结束啦！'}</h1>
           <p className="arcade-complete-sub">{modeTitle(r.playMode, versus)}</p>
 
           <div className="completion-stats arcade-stats-row">
@@ -108,17 +114,17 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               </div>
             )}
             <div className="stat-item">
-              <span className="stat-icon">{isPlatformer ? '⏱️' : '🏆'}</span>
+              <span className="stat-icon">{isPlatformer ? '🏁' : '🏆'}</span>
               <span className="stat-value">
                 {isRope
                   ? r.rankScore || r.jumpCount || 0
                   : isBalloon
                     ? r.bestCombo || 0
                     : isPlatformer
-                      ? r.durationSeconds || 0
+                      ? platformerLevels
                       : `${rate}%`}
               </span>
-              <span className="stat-label">{isRope ? '榜单分' : isBalloon ? '最高连击' : isPlatformer ? '秒' : '完成率'}</span>
+              <span className="stat-label">{isRope ? '榜单分' : isBalloon ? '最高连击' : isPlatformer ? '关卡' : '完成率'}</span>
             </div>
           </div>
 

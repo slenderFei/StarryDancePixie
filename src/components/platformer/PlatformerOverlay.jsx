@@ -14,8 +14,8 @@ const POSE_LM = {
   RIGHT_ANKLE: 28,
 }
 
-const LEVEL_ID = 'sunny-valley-1'
-const ROUND_SECONDS = 150
+const WORDS_PER_LEVEL = 5
+const ROUND_SECONDS = 240
 const CALIBRATION_FRAMES = 20
 const COUNTDOWN_MS = 2500
 const PLAYER_W = 0.62
@@ -34,39 +34,165 @@ const KEYBOARD_CALIBRATION = {
   bodyHeight: 0.48,
 }
 
-const PLATFORMS = [
-  { id: 'ground-1', type: 'ground', x: -1, y: 0, w: 10.5, h: 0.7 },
-  { id: 'p-1', type: 'float', x: 10.5, y: 1.45, w: 3.5, h: 0.45 },
-  { id: 'p-2', type: 'float', x: 15.5, y: 2.45, w: 3.4, h: 0.45 },
-  { id: 'ground-2', type: 'ground', x: 20.2, y: 0, w: 6.2, h: 0.7 },
-  { id: 'p-3', type: 'float', x: 26.8, y: 1.7, w: 3.4, h: 0.45 },
-  { id: 'p-4', type: 'spring', x: 31.8, y: 2.55, w: 3.3, h: 0.45 },
-  { id: 'ground-3', type: 'ground', x: 36.8, y: 0, w: 9.5, h: 0.7 },
+const LEVELS = [
+  {
+    id: 'sunny-valley-1',
+    name: '阳光山谷',
+    subtitle: '熟悉移动和跳跃节奏',
+    spawn: { x: 1.2, y: 0.75 },
+    finishX: 42.8,
+    flagX: 43.2,
+    cameraMinX: -0.8,
+    cameraMaxX: 32.5,
+    palette: {
+      sky: ['#7dd3fc', '#dbeafe', '#fef3c7'],
+      ground: '#35d6b4',
+      groundShade: 'rgba(6, 95, 70, 0.28)',
+      platform: '#f8fafc',
+      accent: '#22d3ee',
+      hill: 'rgba(53, 214, 180, 0.24)',
+      farHill: 'rgba(14, 165, 233, 0.16)',
+    },
+    platforms: [
+      { id: 'l1-ground-1', type: 'ground', x: -1, y: 0, w: 10.5, h: 0.7 },
+      { id: 'l1-p-1', type: 'float', x: 10.5, y: 1.45, w: 3.5, h: 0.45 },
+      { id: 'l1-p-2', type: 'float', x: 15.5, y: 2.45, w: 3.4, h: 0.45 },
+      { id: 'l1-ground-2', type: 'ground', x: 20.2, y: 0, w: 6.2, h: 0.7 },
+      { id: 'l1-p-3', type: 'float', x: 26.8, y: 1.7, w: 3.4, h: 0.45 },
+      { id: 'l1-p-4', type: 'spring', x: 31.8, y: 2.55, w: 3.3, h: 0.45 },
+      { id: 'l1-ground-3', type: 'ground', x: 36.8, y: 0, w: 9.5, h: 0.7 },
+    ],
+    coins: [
+      { id: 'l1-c-1', x: 3.2, y: 1.65, score: 10 },
+      { id: 'l1-c-2', x: 6.2, y: 1.65, score: 10 },
+      { id: 'l1-c-3', x: 11.6, y: 2.45, score: 10 },
+      { id: 'l1-c-4', x: 16.7, y: 3.45, score: 10 },
+      { id: 'l1-c-5', x: 23.5, y: 1.65, score: 10 },
+      { id: 'l1-c-6', x: 28.3, y: 2.7, score: 10 },
+      { id: 'l1-c-7', x: 33.1, y: 3.55, score: 50 },
+      { id: 'l1-c-8', x: 40.5, y: 1.65, score: 10 },
+    ],
+    wordBoxes: [
+      { id: 'l1-w-1', x: 7.6, y: 2.2, action: 'hands_up' },
+      { id: 'l1-w-2', x: 13.0, y: 2.85, action: 'hands_up' },
+      { id: 'l1-w-3', x: 22.0, y: 2.0, action: 'jump' },
+      { id: 'l1-w-4', x: 29.1, y: 3.0, action: 'hands_up' },
+      { id: 'l1-w-5', x: 38.8, y: 2.2, action: 'hands_up' },
+    ],
+    enemies: [
+      { id: 'l1-e-1', type: 'walker', x: 21.7, y: 0.7, w: 0.78, h: 0.68, minX: 21.1, maxX: 25.1, speed: 0.95 },
+      { id: 'l1-e-2', type: 'walker', x: 38.3, y: 0.7, w: 0.78, h: 0.68, minX: 37.6, maxX: 42.3, speed: 1.08 },
+    ],
+  },
+  {
+    id: 'crystal-cavern-2',
+    name: '水晶洞穴',
+    subtitle: '平台更窄，注意落点',
+    spawn: { x: 1.0, y: 0.85 },
+    finishX: 45.4,
+    flagX: 45.8,
+    cameraMinX: -0.8,
+    cameraMaxX: 35.6,
+    palette: {
+      sky: ['#172554', '#312e81', '#0f766e'],
+      ground: '#67e8f9',
+      groundShade: 'rgba(8, 47, 73, 0.46)',
+      platform: '#e0f2fe',
+      accent: '#a78bfa',
+      hill: 'rgba(103, 232, 249, 0.18)',
+      farHill: 'rgba(167, 139, 250, 0.16)',
+    },
+    platforms: [
+      { id: 'l2-ground-1', type: 'ground', x: -1, y: 0, w: 8.2, h: 0.7 },
+      { id: 'l2-p-1', type: 'crystal', x: 8.6, y: 1.25, w: 2.9, h: 0.42 },
+      { id: 'l2-p-2', type: 'crystal', x: 12.7, y: 2.22, w: 2.8, h: 0.42 },
+      { id: 'l2-p-3', type: 'spring', x: 17.2, y: 1.08, w: 2.7, h: 0.42 },
+      { id: 'l2-ground-2', type: 'ground', x: 21.1, y: 0, w: 5.5, h: 0.7 },
+      { id: 'l2-p-4', type: 'crystal', x: 27.1, y: 1.65, w: 2.7, h: 0.42 },
+      { id: 'l2-p-5', type: 'crystal', x: 31.8, y: 2.65, w: 2.9, h: 0.42 },
+      { id: 'l2-p-6', type: 'spring', x: 35.9, y: 1.08, w: 2.6, h: 0.42 },
+      { id: 'l2-ground-3', type: 'ground', x: 40.1, y: 0, w: 7.0, h: 0.7 },
+    ],
+    coins: [
+      { id: 'l2-c-1', x: 4.2, y: 1.65, score: 10 },
+      { id: 'l2-c-2', x: 9.7, y: 2.1, score: 10 },
+      { id: 'l2-c-3', x: 13.7, y: 3.0, score: 10 },
+      { id: 'l2-c-4', x: 18.4, y: 2.55, score: 50 },
+      { id: 'l2-c-5', x: 23.9, y: 1.65, score: 10 },
+      { id: 'l2-c-6', x: 28.2, y: 2.55, score: 10 },
+      { id: 'l2-c-7', x: 33.2, y: 3.55, score: 10 },
+      { id: 'l2-c-8', x: 42.8, y: 1.65, score: 50 },
+    ],
+    wordBoxes: [
+      { id: 'l2-w-1', x: 6.2, y: 2.2, action: 'hands_up' },
+      { id: 'l2-w-2', x: 12.9, y: 3.05, action: 'hands_up' },
+      { id: 'l2-w-3', x: 22.8, y: 2.0, action: 'jump' },
+      { id: 'l2-w-4', x: 31.9, y: 3.22, action: 'hands_up' },
+      { id: 'l2-w-5', x: 41.6, y: 2.2, action: 'hands_up' },
+    ],
+    enemies: [
+      { id: 'l2-e-1', type: 'spinner', x: 22.4, y: 0.72, w: 0.8, h: 0.72, minX: 21.6, maxX: 25.3, speed: 1.15 },
+      { id: 'l2-e-2', type: 'walker', x: 40.9, y: 0.72, w: 0.82, h: 0.7, minX: 40.3, maxX: 44.9, speed: 1.18 },
+      { id: 'l2-e-3', type: 'spinner', x: 34.1, y: 3.1, w: 0.72, h: 0.62, minX: 32.2, maxX: 34.2, speed: 0.78 },
+    ],
+  },
+  {
+    id: 'cloud-tower-3',
+    name: '云端高塔',
+    subtitle: '连续跳跃，冲向终点',
+    spawn: { x: 1.1, y: 0.85 },
+    finishX: 48.4,
+    flagX: 48.8,
+    cameraMinX: -0.8,
+    cameraMaxX: 38.6,
+    palette: {
+      sky: ['#38bdf8', '#f0f9ff', '#ffe4e6'],
+      ground: '#f0abfc',
+      groundShade: 'rgba(134, 25, 143, 0.24)',
+      platform: '#ffffff',
+      accent: '#fb7185',
+      hill: 'rgba(251, 113, 133, 0.15)',
+      farHill: 'rgba(56, 189, 248, 0.16)',
+    },
+    platforms: [
+      { id: 'l3-ground-1', type: 'ground', x: -1, y: 0, w: 7.4, h: 0.7 },
+      { id: 'l3-p-1', type: 'cloud', x: 7.7, y: 1.35, w: 2.7, h: 0.42 },
+      { id: 'l3-p-2', type: 'cloud', x: 11.6, y: 2.35, w: 2.55, h: 0.42 },
+      { id: 'l3-p-3', type: 'spring', x: 15.3, y: 3.15, w: 2.5, h: 0.42 },
+      { id: 'l3-p-4', type: 'cloud', x: 19.4, y: 2.1, w: 2.8, h: 0.42 },
+      { id: 'l3-ground-2', type: 'ground', x: 23.4, y: 0, w: 4.8, h: 0.7 },
+      { id: 'l3-p-5', type: 'cloud', x: 29.0, y: 1.75, w: 2.7, h: 0.42 },
+      { id: 'l3-p-6', type: 'cloud', x: 33.0, y: 2.8, w: 2.7, h: 0.42 },
+      { id: 'l3-p-7', type: 'spring', x: 37.3, y: 1.2, w: 2.6, h: 0.42 },
+      { id: 'l3-ground-3', type: 'ground', x: 41.6, y: 0, w: 8.7, h: 0.7 },
+    ],
+    coins: [
+      { id: 'l3-c-1', x: 3.6, y: 1.65, score: 10 },
+      { id: 'l3-c-2', x: 8.8, y: 2.25, score: 10 },
+      { id: 'l3-c-3', x: 12.6, y: 3.25, score: 10 },
+      { id: 'l3-c-4', x: 16.4, y: 4.18, score: 50 },
+      { id: 'l3-c-5', x: 20.7, y: 3.02, score: 10 },
+      { id: 'l3-c-6', x: 30.2, y: 2.65, score: 10 },
+      { id: 'l3-c-7', x: 34.3, y: 3.8, score: 10 },
+      { id: 'l3-c-8', x: 38.4, y: 2.72, score: 50 },
+      { id: 'l3-c-9', x: 46.2, y: 1.65, score: 50 },
+    ],
+    wordBoxes: [
+      { id: 'l3-w-1', x: 6.0, y: 2.2, action: 'hands_up' },
+      { id: 'l3-w-2', x: 12.0, y: 3.12, action: 'hands_up' },
+      { id: 'l3-w-3', x: 23.8, y: 2.05, action: 'jump' },
+      { id: 'l3-w-4', x: 33.2, y: 3.42, action: 'hands_up' },
+      { id: 'l3-w-5', x: 45.0, y: 2.2, action: 'hands_up' },
+    ],
+    enemies: [
+      { id: 'l3-e-1', type: 'walker', x: 24.6, y: 0.72, w: 0.78, h: 0.68, minX: 23.8, maxX: 27.4, speed: 1.25 },
+      { id: 'l3-e-2', type: 'spinner', x: 42.7, y: 0.72, w: 0.8, h: 0.72, minX: 42.1, maxX: 46.8, speed: 1.35 },
+      { id: 'l3-e-3', type: 'walker', x: 30.6, y: 2.17, w: 0.74, h: 0.62, minX: 29.2, maxX: 31.2, speed: 0.8 },
+    ],
+  },
 ]
 
-const COINS = [
-  { id: 'c-1', x: 3.2, y: 1.65, score: 10 },
-  { id: 'c-2', x: 6.2, y: 1.65, score: 10 },
-  { id: 'c-3', x: 11.6, y: 2.45, score: 10 },
-  { id: 'c-4', x: 16.7, y: 3.45, score: 10 },
-  { id: 'c-5', x: 23.5, y: 1.65, score: 10 },
-  { id: 'c-6', x: 28.3, y: 2.7, score: 10 },
-  { id: 'c-7', x: 33.1, y: 3.55, score: 50 },
-  { id: 'c-8', x: 40.5, y: 1.65, score: 10 },
-]
-
-const WORD_BOXES = [
-  { id: 'w-1', x: 7.6, y: 2.2, action: 'hands_up' },
-  { id: 'w-2', x: 13.0, y: 2.85, action: 'hands_up' },
-  { id: 'w-3', x: 22.0, y: 2.0, action: 'jump' },
-  { id: 'w-4', x: 29.1, y: 3.0, action: 'hands_up' },
-  { id: 'w-5', x: 38.8, y: 2.2, action: 'hands_up' },
-]
-
-const ENEMIES = [
-  { id: 'e-1', x: 21.7, y: 0.7, w: 0.78, h: 0.68, minX: 21.1, maxX: 25.1, speed: 0.95 },
-  { id: 'e-2', x: 38.3, y: 0.7, w: 0.78, h: 0.68, minX: 37.6, maxX: 42.3, speed: 1.08 },
-]
+const TOTAL_WORDS = LEVELS.length * WORDS_PER_LEVEL
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
@@ -153,10 +279,63 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
+function currentLevel(s) {
+  return LEVELS[s?.levelIndex || 0] || LEVELS[0]
+}
+
+function wordIndexForBox(levelIndex, boxIndex) {
+  return levelIndex * WORDS_PER_LEVEL + boxIndex
+}
+
 function startCountdown(s, now, status = '准备') {
   s.phase = 'countdown'
   s.countdownStartedAt = now
   s.status = status
+}
+
+function enterLevel(s, levelIndex, now, status) {
+  const level = LEVELS[levelIndex] || LEVELS[0]
+  s.levelIndex = levelIndex
+  s.player.x = level.spawn.x
+  s.player.y = level.spawn.y
+  s.player.vx = 0
+  s.player.vy = 0
+  s.player.grounded = false
+  s.checkpoint = { ...level.spawn }
+  s.enemies = level.enemies.map((enemy) => ({ ...enemy, dir: 1 }))
+  s.poseJumpActive = false
+  s.keyJumpActive = false
+  s.lastJumpAt = -Infinity
+  startCountdown(s, now, status || `${level.name} 准备`)
+}
+
+function platformColors(platform, palette) {
+  if (platform.type === 'spring') {
+    return { fill: '#facc15', shade: 'rgba(120, 53, 15, 0.42)', top: '#fef08a' }
+  }
+  if (platform.type === 'crystal') {
+    return { fill: '#bae6fd', shade: 'rgba(14, 116, 144, 0.28)', top: '#f0f9ff' }
+  }
+  if (platform.type === 'cloud') {
+    return { fill: '#ffffff', shade: 'rgba(14, 165, 233, 0.16)', top: '#f8fafc' }
+  }
+  if (platform.type === 'ground') {
+    return { fill: palette.ground, shade: palette.groundShade, top: 'rgba(255, 255, 255, 0.36)' }
+  }
+  return { fill: palette.platform, shade: 'rgba(14, 116, 144, 0.16)', top: 'rgba(255, 255, 255, 0.46)' }
+}
+
+function drawStar(ctx, x, y, outer, inner, points = 5) {
+  ctx.beginPath()
+  for (let i = 0; i < points * 2; i += 1) {
+    const radius = i % 2 === 0 ? outer : inner
+    const angle = -Math.PI / 2 + (i * Math.PI) / points
+    const px = x + Math.cos(angle) * radius
+    const py = y + Math.sin(angle) * radius
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
 }
 
 function PlatformerOverlay() {
@@ -172,10 +351,14 @@ function PlatformerOverlay() {
     phase: 'calibrating',
     status: '站稳校准',
     countdown: 3,
+    levelIndex: 0,
+    levelName: LEVELS[0].name,
+    totalLevels: LEVELS.length,
     score: 0,
     coins: 0,
     health: 3,
     learned: 0,
+    totalWords: TOTAL_WORDS,
     secondsLeft: ROUND_SECONDS,
     quality: 0,
     challenge: null,
@@ -196,14 +379,19 @@ function PlatformerOverlay() {
   const publish = useCallback(() => {
     const s = stateRef.current
     if (!s) return
+    const level = currentLevel(s)
     setUi({
       phase: s.phase,
       status: s.status,
       countdown: s.countdown,
+      levelIndex: s.levelIndex,
+      levelName: level.name,
+      totalLevels: LEVELS.length,
       score: s.score,
       coins: s.collectedCoinIds.size,
       health: s.player.health,
       learned: s.learnedWords.length,
+      totalWords: s.words.length,
       secondsLeft: s.startedAt
         ? Math.max(0, Math.ceil(ROUND_SECONDS - (performance.now() - s.startedAt) / 1000))
         : ROUND_SECONDS,
@@ -278,9 +466,12 @@ function PlatformerOverlay() {
       damageCount: s.damageCount,
       deathCount: s.deathCount,
       platformerStats: {
-        levelId: LEVEL_ID,
+        levelId: LEVELS.map((level) => level.id).join('+'),
         completed,
         maxX: Number(s.maxX.toFixed(2)),
+        levelsCompleted: completed ? LEVELS.length : s.levelsCompleted,
+        totalLevels: LEVELS.length,
+        levelProgress: s.levelProgress.map((progress) => Number(progress.toFixed(2))),
         coinsCollected: [...s.collectedCoinIds],
         enemiesDefeated: [...s.defeatedEnemyIds],
         wordBoxResults: s.words.map((word) => ({
@@ -304,25 +495,28 @@ function PlatformerOverlay() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, vw, vh)
 
-    const scale = Math.min(vw / 13.8, vh / 7.4)
-    const cameraX = clamp(s.player.x - 4.2, -0.8, 32.5)
+    const level = currentLevel(s)
+    const palette = level.palette
+    const scale = Math.min(vw / 13.8, vh / 7.5)
+    const cameraX = clamp(s.player.x - 4.2, level.cameraMinX, level.cameraMaxX)
     const baseY = vh - Math.max(76, vh * 0.14)
     const wx = (x) => (x - cameraX) * scale
     const wy = (y) => baseY - y * scale
 
     const sky = ctx.createLinearGradient(0, 0, 0, vh)
-    sky.addColorStop(0, '#7dd3fc')
-    sky.addColorStop(0.48, '#dbeafe')
-    sky.addColorStop(1, '#fef3c7')
+    sky.addColorStop(0, palette.sky[0])
+    sky.addColorStop(0.5, palette.sky[1])
+    sky.addColorStop(1, palette.sky[2])
     ctx.fillStyle = sky
     ctx.fillRect(0, 0, vw, vh)
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.76)'
+    ctx.fillStyle = s.levelIndex === 1 ? 'rgba(224, 242, 254, 0.28)' : 'rgba(255, 255, 255, 0.76)'
     ;[
       [3.5, 5.7, 1.4],
       [12, 5.15, 1.1],
       [21, 5.8, 1.35],
       [34, 5.25, 1.2],
+      [44, 5.75, 1.05],
     ].forEach(([x, y, r]) => {
       const sx = wx(x)
       const sy = wy(y)
@@ -333,61 +527,122 @@ function PlatformerOverlay() {
       ctx.fill()
     })
 
-    ctx.fillStyle = 'rgba(53, 214, 180, 0.22)'
+    const orbX = wx(s.levelIndex === 1 ? 9 : 5.2)
+    const orbY = wy(s.levelIndex === 1 ? 5.1 : 5.7)
+    const orb = ctx.createRadialGradient(orbX, orbY, 2, orbX, orbY, scale * 1.2)
+    orb.addColorStop(0, s.levelIndex === 1 ? 'rgba(199, 210, 254, 0.7)' : 'rgba(254, 240, 138, 0.82)')
+    orb.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = orb
     ctx.beginPath()
-    ctx.moveTo(0, baseY + scale * 0.1)
-    for (let i = 0; i <= 9; i += 1) {
-      const x = i * (vw / 8)
-      const y = baseY - Math.sin(i * 0.9) * scale * 0.26
+    ctx.arc(orbX, orbY, scale * 1.2, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.fillStyle = palette.farHill
+    ctx.beginPath()
+    ctx.moveTo(0, baseY + scale * 0.2)
+    for (let i = 0; i <= 10; i += 1) {
+      const x = i * (vw / 9)
+      const y = baseY - Math.sin(i * 0.72 + s.levelIndex) * scale * 0.4 - scale * 0.55
       ctx.lineTo(x, y)
     }
     ctx.lineTo(vw, vh)
     ctx.lineTo(0, vh)
     ctx.fill()
 
-    PLATFORMS.forEach((platform) => {
+    ctx.fillStyle = palette.hill
+    ctx.beginPath()
+    ctx.moveTo(0, baseY + scale * 0.1)
+    for (let i = 0; i <= 9; i += 1) {
+      const x = i * (vw / 8)
+      const y = baseY - Math.sin(i * 0.9 + s.levelIndex * 0.45) * scale * 0.3
+      ctx.lineTo(x, y)
+    }
+    ctx.lineTo(vw, vh)
+    ctx.lineTo(0, vh)
+    ctx.fill()
+
+    if (s.levelIndex === 1) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
+      for (let i = 0; i < 16; i += 1) {
+        const x = wx(2.5 + i * 3.2)
+        const y = wy(0.6 + (i % 4) * 0.45)
+        drawStar(ctx, x, y, 5 + (i % 3) * 2, 2.5, 4)
+        ctx.fill()
+      }
+    }
+
+    level.platforms.forEach((platform) => {
       const x = wx(platform.x)
       const y = wy(platform.y + platform.h)
       const w = platform.w * scale
       const h = platform.h * scale
-      ctx.fillStyle = platform.type === 'spring' ? '#facc15' : platform.type === 'ground' ? '#35d6b4' : '#f8fafc'
+      const colors = platformColors(platform, palette)
+      ctx.fillStyle = colors.fill
       roundedRect(ctx, x, y, w, h, 8)
       ctx.fill()
-      ctx.fillStyle =
-        platform.type === 'spring'
-          ? 'rgba(120, 53, 15, 0.42)'
-          : platform.type === 'ground'
-            ? 'rgba(6, 95, 70, 0.28)'
-            : 'rgba(14, 116, 144, 0.16)'
+      ctx.fillStyle = colors.top
+      roundedRect(ctx, x + 4, y + 4, Math.max(0, w - 8), Math.max(2, h * 0.22), 5)
+      ctx.fill()
+      ctx.fillStyle = colors.shade
       ctx.fillRect(x, y + h * 0.58, w, h * 0.42)
+
+      if (platform.type === 'spring') {
+        ctx.strokeStyle = 'rgba(120, 53, 15, 0.45)'
+        ctx.lineWidth = 2
+        for (let i = 0; i < 4; i += 1) {
+          ctx.beginPath()
+          ctx.moveTo(x + w * (0.18 + i * 0.18), y + h * 0.7)
+          ctx.lineTo(x + w * (0.26 + i * 0.18), y + h * 0.28)
+          ctx.stroke()
+        }
+      }
     })
 
-    COINS.forEach((coin) => {
+    level.coins.forEach((coin) => {
       if (s.collectedCoinIds.has(coin.id)) return
       const bob = Math.sin(performance.now() * 0.004 + coin.x) * 4
       const x = wx(coin.x)
       const y = wy(coin.y) + bob
-      ctx.fillStyle = coin.score >= 50 ? '#f97316' : '#facc15'
+      const coinGradient = ctx.createRadialGradient(x - 3, y - 4, 2, x, y, scale * 0.28)
+      coinGradient.addColorStop(0, '#fff7ed')
+      coinGradient.addColorStop(0.55, coin.score >= 50 ? '#fb923c' : '#facc15')
+      coinGradient.addColorStop(1, coin.score >= 50 ? '#c2410c' : '#ca8a04')
+      ctx.fillStyle = coinGradient
       ctx.beginPath()
       ctx.ellipse(x, y, scale * 0.16, scale * 0.24, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.82)'
       ctx.lineWidth = 2
       ctx.stroke()
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+      ctx.fillRect(x - 1, y - scale * 0.16, 2, scale * 0.32)
     })
 
-    WORD_BOXES.forEach((box, index) => {
+    level.wordBoxes.forEach((box, index) => {
       const opened = s.openedBoxIds.has(box.id)
       const x = wx(box.x)
       const y = wy(box.y + 0.7)
       const size = scale * 0.7
-      ctx.fillStyle = opened ? 'rgba(148, 163, 184, 0.72)' : '#8b5cf6'
+      const boxGradient = ctx.createLinearGradient(x, y, x + size, y + size)
+      if (opened) {
+        boxGradient.addColorStop(0, 'rgba(148, 163, 184, 0.74)')
+        boxGradient.addColorStop(1, 'rgba(71, 85, 105, 0.72)')
+      } else {
+        boxGradient.addColorStop(0, '#a78bfa')
+        boxGradient.addColorStop(0.55, palette.accent)
+        boxGradient.addColorStop(1, '#4f46e5')
+      }
+      ctx.fillStyle = boxGradient
       roundedRect(ctx, x, y, size, size, 8)
       ctx.fill()
+      ctx.strokeStyle = opened ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.62)'
+      ctx.lineWidth = 2
+      ctx.stroke()
       ctx.fillStyle = '#fff'
       ctx.font = `900 ${Math.max(13, scale * 0.2)}px sans-serif`
       ctx.textAlign = 'center'
-      ctx.fillText(opened ? '✓' : s.words[index]?.word?.[0]?.toUpperCase() || '?', x + size / 2, y + size * 0.58)
+      const word = s.words[wordIndexForBox(s.levelIndex, index)]
+      ctx.fillText(opened ? '✓' : word?.word?.[0]?.toUpperCase() || '?', x + size / 2, y + size * 0.58)
     })
 
     s.enemies.forEach((enemy) => {
@@ -396,9 +651,19 @@ function PlatformerOverlay() {
       const y = wy(enemy.y + enemy.h)
       const w = enemy.w * scale
       const h = enemy.h * scale
-      ctx.fillStyle = '#fb7185'
+      ctx.fillStyle = enemy.type === 'spinner' ? '#a78bfa' : '#fb7185'
       roundedRect(ctx, x, y, w, h, 12)
       ctx.fill()
+      if (enemy.type === 'spinner') {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(x + w * 0.16, y + h * 0.72)
+        ctx.lineTo(x + w * 0.84, y + h * 0.26)
+        ctx.moveTo(x + w * 0.18, y + h * 0.24)
+        ctx.lineTo(x + w * 0.82, y + h * 0.74)
+        ctx.stroke()
+      }
       ctx.fillStyle = '#fff'
       ctx.beginPath()
       ctx.arc(x + w * 0.32, y + h * 0.38, 3.5, 0, Math.PI * 2)
@@ -406,7 +671,7 @@ function PlatformerOverlay() {
       ctx.fill()
     })
 
-    const flagX = wx(43.2)
+    const flagX = wx(level.flagX)
     const flagBase = wy(0.7)
     ctx.strokeStyle = '#0f172a'
     ctx.lineWidth = 5
@@ -414,7 +679,7 @@ function PlatformerOverlay() {
     ctx.moveTo(flagX, flagBase)
     ctx.lineTo(flagX, wy(4.2))
     ctx.stroke()
-    ctx.fillStyle = '#22d3ee'
+    ctx.fillStyle = palette.accent
     ctx.beginPath()
     ctx.moveTo(flagX + 2, wy(4.15))
     ctx.lineTo(flagX + scale * 0.85, wy(3.75))
@@ -428,12 +693,28 @@ function PlatformerOverlay() {
     const pw = p.w * scale
     const ph = p.h * scale
     const blinking = p.invincibleUntil > performance.now() && Math.floor(performance.now() / 90) % 2 === 0
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.24)'
+    ctx.beginPath()
+    ctx.ellipse(px + pw * 0.5, wy(p.y), pw * 0.78, Math.max(4, scale * 0.08), 0, 0, Math.PI * 2)
+    ctx.fill()
     if (!blinking) {
+      ctx.fillStyle = 'rgba(236, 72, 153, 0.72)'
+      ctx.beginPath()
+      ctx.moveTo(px + pw * 0.22, py + ph * 0.34)
+      ctx.lineTo(px - pw * 0.22, py + ph * 0.72)
+      ctx.lineTo(px + pw * 0.28, py + ph * 0.78)
+      ctx.closePath()
+      ctx.fill()
       const body = ctx.createLinearGradient(px, py, px + pw, py + ph)
       body.addColorStop(0, '#ff6fae')
       body.addColorStop(1, '#2364ff')
       ctx.fillStyle = body
       roundedRect(ctx, px, py, pw, ph, 12)
+      ctx.fill()
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
+      ctx.beginPath()
+      ctx.arc(px + pw * 0.18, py + ph * 0.46, pw * 0.13, 0, Math.PI * 2)
+      ctx.arc(px + pw * 0.82, py + ph * 0.46, pw * 0.13, 0, Math.PI * 2)
       ctx.fill()
       ctx.fillStyle = '#fef3c7'
       ctx.beginPath()
@@ -448,10 +729,16 @@ function PlatformerOverlay() {
       ctx.beginPath()
       ctx.arc(px + pw * 0.72, py + ph * 0.13, pw * 0.14, 0, Math.PI * 2)
       ctx.fill()
+      ctx.fillStyle = '#172033'
+      roundedRect(ctx, px + pw * 0.12, py + ph * 0.88, pw * 0.28, ph * 0.1, 4)
+      ctx.fill()
+      roundedRect(ctx, px + pw * 0.6, py + ph * 0.88, pw * 0.28, ph * 0.1, 4)
+      ctx.fill()
     }
   }, [])
 
   useEffect(() => {
+    const firstLevel = LEVELS[0]
     stateRef.current = {
       phase: 'calibrating',
       status: '站稳校准',
@@ -463,12 +750,15 @@ function PlatformerOverlay() {
       reported: false,
       completed: false,
       finishReason: '',
+      levelIndex: 0,
+      levelsCompleted: 0,
+      levelProgress: LEVELS.map(() => 0),
       calibrationSamples: [],
       calibration: null,
-      words: arcadeSessionWords.slice(0, 5),
+      words: arcadeSessionWords.slice(0, TOTAL_WORDS),
       player: {
-        x: 1.2,
-        y: 0.75,
+        x: firstLevel.spawn.x,
+        y: firstLevel.spawn.y,
         vx: 0,
         vy: 0,
         w: PLAYER_W,
@@ -477,8 +767,8 @@ function PlatformerOverlay() {
         health: 3,
         invincibleUntil: 0,
       },
-      checkpoint: { x: 1.2, y: 0.75 },
-      enemies: ENEMIES.map((enemy) => ({ ...enemy, dir: 1 })),
+      checkpoint: { ...firstLevel.spawn },
+      enemies: firstLevel.enemies.map((enemy) => ({ ...enemy, dir: 1 })),
       collectedCoinIds: new Set(),
       openedBoxIds: new Set(),
       defeatedEnemyIds: new Set(),
@@ -563,8 +853,8 @@ function PlatformerOverlay() {
         s.status = `${s.countdown}`
         if (now - s.countdownStartedAt >= COUNTDOWN_MS) {
           s.phase = 'playing'
-          s.startedAt = now
-          s.status = '开始冒险'
+          if (!s.startedAt) s.startedAt = now
+          s.status = `${currentLevel(s).name} 开始`
         }
       } else if (s.phase === 'wordChallenge') {
         const jumpNow = pose.ok && pose.handsUp
@@ -574,6 +864,7 @@ function PlatformerOverlay() {
         s.poseJumpActive = jumpNow
         s.status = '举起双手或按 E 完成单词挑战'
       } else if (s.phase === 'playing') {
+        const level = currentLevel(s)
         const keys = keysRef.current
         const leftKey = keys.has('a') || keys.has('arrowleft')
         const rightKey = keys.has('d') || keys.has('arrowright')
@@ -618,7 +909,7 @@ function PlatformerOverlay() {
         const prev = { x: p.x, y: p.y }
 
         p.x += p.vx * dt
-        for (const platform of PLATFORMS) {
+        for (const platform of level.platforms) {
           if (!intersects(p, platform)) continue
           if (p.vx > 0) p.x = platform.x - p.w
           if (p.vx < 0) p.x = platform.x + platform.w
@@ -627,7 +918,7 @@ function PlatformerOverlay() {
 
         p.y += p.vy * dt
         p.grounded = false
-        for (const platform of PLATFORMS) {
+        for (const platform of level.platforms) {
           if (!intersects(p, platform)) continue
           if (p.vy <= 0 && prev.y >= platform.y + platform.h - 0.08) {
             p.y = platform.y + platform.h
@@ -640,13 +931,14 @@ function PlatformerOverlay() {
           }
         }
 
-        p.x = clamp(p.x, -0.5, 44.1)
-        s.maxX = Math.max(s.maxX, p.x)
+        p.x = clamp(p.x, -0.5, level.finishX + 1.3)
+        s.levelProgress[s.levelIndex] = Math.max(s.levelProgress[s.levelIndex] || 0, p.x)
+        s.maxX = Math.max(s.maxX, s.levelIndex * 100 + p.x)
         if (p.grounded && p.x > s.checkpoint.x + 5) {
           s.checkpoint = { x: p.x, y: p.y }
         }
 
-        COINS.forEach((coin) => {
+        level.coins.forEach((coin) => {
           if (s.collectedCoinIds.has(coin.id)) return
           if (circleHitRect(coin.x, coin.y, 0.34, p)) {
             s.collectedCoinIds.add(coin.id)
@@ -656,11 +948,11 @@ function PlatformerOverlay() {
           }
         })
 
-        WORD_BOXES.forEach((box, index) => {
+        level.wordBoxes.forEach((box, index) => {
           if (s.openedBoxIds.has(box.id) || s.challenge) return
           const rect = { x: box.x, y: box.y, w: 0.72, h: 0.72 }
           if (!intersects(p, rect)) return
-          const word = s.words[index]
+          const word = s.words[wordIndexForBox(s.levelIndex, index)]
           if (!word) return
           s.phase = 'wordChallenge'
           s.challenge = { boxId: box.id, word, action: box.action }
@@ -694,17 +986,28 @@ function PlatformerOverlay() {
         if (p.y < -3) {
           s.deathCount += 1
           hurtPlayer('fall')
-          p.x = s.checkpoint.x
-          p.y = s.checkpoint.y + 0.2
-          p.vx = 0
-          p.vy = 0
+          if (!s.finished) {
+            p.x = s.checkpoint.x
+            p.y = s.checkpoint.y + 0.2
+            p.vx = 0
+            p.vy = 0
+          }
         }
 
-        if (p.x >= 42.8) {
-          s.completed = true
-          s.finished = true
-          s.score += Math.max(0, Math.ceil(ROUND_SECONDS - (now - s.startedAt) / 1000)) * 3
-          s.status = '通关'
+        if (p.x >= level.finishX) {
+          const isLastLevel = s.levelIndex >= LEVELS.length - 1
+          s.score += 250 + Math.max(0, Math.ceil(ROUND_SECONDS - (now - s.startedAt) / 1000))
+          s.levelsCompleted = Math.max(s.levelsCompleted, s.levelIndex + 1)
+          if (isLastLevel) {
+            s.completed = true
+            s.finished = true
+            s.score += Math.max(0, Math.ceil(ROUND_SECONDS - (now - s.startedAt) / 1000)) * 3
+            s.status = '全部通关'
+          } else {
+            s.player.health = Math.min(4, s.player.health + 1)
+            enterLevel(s, s.levelIndex + 1, now, `进入 ${LEVELS[s.levelIndex + 1].name}`)
+            playSuccessTone(5)
+          }
         }
 
         if (s.startedAt && now - s.startedAt >= ROUND_SECONDS * 1000) {
@@ -748,6 +1051,10 @@ function PlatformerOverlay() {
           <strong>{'♥'.repeat(Math.max(0, ui.health)) || '0'}</strong>
         </div>
         <div>
+          <span>关卡</span>
+          <strong>{ui.levelIndex + 1}/{ui.totalLevels}</strong>
+        </div>
+        <div>
           <span>分数</span>
           <strong>{ui.score}</strong>
         </div>
@@ -757,7 +1064,7 @@ function PlatformerOverlay() {
         </div>
         <div>
           <span>单词</span>
-          <strong>{ui.learned}/5</strong>
+          <strong>{ui.learned}/{ui.totalWords}</strong>
         </div>
         <div>
           <span>时间</span>
@@ -772,7 +1079,7 @@ function PlatformerOverlay() {
 
       {ui.phase !== 'playing' && ui.phase !== 'wordChallenge' && (
         <div className="platformer-ready">
-          <span>{ui.phase === 'calibrating' ? '站稳校准' : '准备出发'}</span>
+          <span>{ui.phase === 'calibrating' ? '站稳校准' : ui.levelName}</span>
           <strong>{ui.phase === 'calibrating' ? `${ui.quality}%` : ui.countdown}</strong>
         </div>
       )}

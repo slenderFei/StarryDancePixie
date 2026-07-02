@@ -18,7 +18,7 @@ const ARCADE_ROUND_SIZE_BY_MODE = {
   balloon: 60,
   fruit: 5,
   rope: 0,
-  platformer: 5,
+  platformer: 15,
 }
 
 let latestPose = null
