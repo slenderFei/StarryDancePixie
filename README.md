@@ -13,6 +13,7 @@
 - **梦幻 3D 场景**：马卡龙色系的柔美渐变背景，漂浮的几何装饰，闪烁的星光粒子
 - **可爱的 3D 精灵**：跟随鼠标移动的小精灵伙伴，陪伴学习全程
 - **体感互动**：基于 MediaPipe Pose 的实时骨架检测，识别各种身体动作
+- **GNM Head 表情挑战**：用微笑、眨眼与头部动作实时驱动 GNM v3.0 头像
 - **魔法粒子特效**：双手高举时触发绚丽的星星散开效果（Shader 实现）
 - **正面反馈系统**：即时鼓励、连击奖励、成就动画
 
@@ -22,7 +23,7 @@
 - **Three.js + React Three Fiber** - 3D 渲染引擎
 - **@react-three/drei** - Three.js 实用组件库
 - **@react-three/postprocessing** - 后期处理效果
-- **MediaPipe Pose** - Google 的姿态检测 AI
+- **MediaPipe Pose + Face Mesh** - Google 的姿态与面部关键点检测
 - **Zustand** - 轻量级状态管理
 - **Vite** - 快速的构建工具
 

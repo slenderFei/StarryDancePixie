@@ -10,6 +10,7 @@ function modeTitle(playMode, arcadeVersus) {
   if (playMode === 'fruit') return '✍️ 单词拼写'
   if (playMode === 'rope') return '🪢 虚拟跳绳'
   if (playMode === 'platformer') return '🏃 星光大冒险 · 横版闯关'
+  if (playMode === 'gnm') return '◉ GNM Head · 表情挑战'
   return '星光词汇挑战'
 }
 
@@ -70,6 +71,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const isRope = r.playMode === 'rope'
     const isBalloon = r.playMode === 'balloon'
     const isPlatformer = r.playMode === 'platformer'
+    const isGnm = r.playMode === 'gnm'
     const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
     const balloonScore = Number(r.score || 0)
     const platformerScore = Number(r.score || r.rankScore || 0)
@@ -84,37 +86,79 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
       <div className="game-ui completion-screen">
         {accountActions}
         <div className="completion-card arcade-complete">
-          <h1 className="completion-title">{isPlatformer && r.completed ? '🎯 全部通关！' : '🎯 一局结束啦！'}</h1>
+          <h1 className="completion-title">
+            {isGnm
+              ? r.completed
+                ? '表情同步满分！'
+                : '表情挑战完成'
+              : isPlatformer && r.completed
+                ? '🎯 全部通关！'
+                : '🎯 一局结束啦！'}
+          </h1>
           <p className="arcade-complete-sub">{modeTitle(r.playMode, versus)}</p>
 
           <div className="completion-stats arcade-stats-row">
             <div className="stat-item highlight">
               <span className="stat-icon">
-                {isBalloon ? '🎈' : isRope ? '🪢' : isPlatformer ? '🏃' : '✍️'}
+                {isBalloon ? '🎈' : isRope ? '🪢' : isPlatformer ? '🏃' : isGnm ? '◉' : '✍️'}
               </span>
               <span className="stat-value">
-                {isRope ? r.jumpCount || 0 : isBalloon ? balloonScore : isPlatformer ? platformerScore : learned}
+                {isRope
+                  ? r.jumpCount || 0
+                  : isBalloon
+                    ? balloonScore
+                    : isPlatformer
+                      ? platformerScore
+                      : isGnm
+                        ? r.score || 0
+                        : learned}
               </span>
               <span className="stat-label">
-                {isRope ? '跳绳次数' : isBalloon || isPlatformer ? '本局得分' : '拼对单词'}
+                {isRope
+                  ? '跳绳次数'
+                  : isBalloon || isPlatformer || isGnm
+                    ? '本局得分'
+                    : '拼对单词'}
               </span>
             </div>
             <div className="stat-item">
-              <span className="stat-icon">{isRope ? '⏱️' : isBalloon ? '⚡' : isPlatformer ? '🪙' : '📦'}</span>
-              <span className="stat-value">
-                {isRope ? r.durationSeconds || 60 : isBalloon ? learned : isPlatformer ? r.coins || 0 : r.sessionTotal}
+              <span className="stat-icon">
+                {isRope ? '⏱️' : isBalloon ? '⚡' : isPlatformer ? '🪙' : isGnm ? '✓' : '📦'}
               </span>
-              <span className="stat-label">{isRope ? '秒' : isBalloon ? '击破单词' : isPlatformer ? '金币' : '本局总数'}</span>
+              <span className="stat-value">
+                {isRope
+                  ? r.durationSeconds || 60
+                  : isBalloon
+                    ? learned
+                    : isPlatformer
+                      ? r.coins || 0
+                      : isGnm
+                        ? r.completedChallenges || 0
+                        : r.sessionTotal}
+              </span>
+              <span className="stat-label">
+                {isRope
+                  ? '秒'
+                  : isBalloon
+                    ? '击破单词'
+                    : isPlatformer
+                      ? '金币'
+                      : isGnm
+                        ? '完成动作'
+                        : '本局总数'}
+              </span>
             </div>
             {!isRope && (
               <div className="stat-item">
-                <span className="stat-icon">{isSpelling ? '📝' : isPlatformer ? '📚' : '💨'}</span>
-                <span className="stat-value">{isPlatformer ? learned : r.missed}</span>
-                <span className="stat-label">{isSpelling ? '未完成' : isPlatformer ? '学到单词' : '漏接'}</span>
+              <span className="stat-icon">{isSpelling ? '📝' : isPlatformer ? '📚' : isGnm ? '○' : '💨'}</span>
+              <span className="stat-value">{isPlatformer ? learned : r.missed}</span>
+              <span className="stat-label">
+                {isSpelling ? '未完成' : isPlatformer ? '学到单词' : isGnm ? '跳过动作' : '漏接'}
+              </span>
               </div>
             )}
             <div className="stat-item">
-              <span className="stat-icon">{isPlatformer ? '🏁' : '🏆'}</span>
+              <span className="stat-icon">{isPlatformer ? '🏁' : isGnm ? '↯' : '🏆'}</span>
               <span className="stat-value">
                 {isRope
                   ? r.bestCombo || r.rankScore || r.jumpCount || 0
@@ -122,9 +166,21 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                     ? r.bestCombo || 0
                     : isPlatformer
                       ? platformerLevels
+                      : isGnm
+                        ? r.bestCombo || 0
                       : `${rate}%`}
               </span>
-              <span className="stat-label">{isRope ? '最佳连击' : isBalloon ? '最高连击' : isPlatformer ? '关卡' : '完成率'}</span>
+              <span className="stat-label">
+                {isRope
+                  ? '最佳连击'
+                  : isBalloon
+                    ? '最高连击'
+                    : isPlatformer
+                      ? '关卡'
+                      : isGnm
+                        ? '动作连击'
+                        : '完成率'}
+              </span>
             </div>
           </div>
 
@@ -150,6 +206,11 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               ) : (
                 <p>暂无成绩</p>
               )}
+            </div>
+          ) : isGnm ? (
+            <div className="gnm-final-summary">
+              <strong>{r.completedChallenges || 0}/{r.sessionTotal}</strong>
+              <span>个表情成功同步到 GNM Head</span>
             </div>
           ) : (
             <div className="completion-words">
@@ -188,6 +249,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                   ? r.completed
                     ? '成功闯关！下一次把单词方块和金币都收满吧！💫'
                     : '先稳住移动和跳跃节奏，下一次一定能冲到终点！💪'
+                  : isGnm
+                    ? (r.completedChallenges || 0) >= 5
+                      ? '面部控制很稳定，继续挑战全动作连击。'
+                      : '保持正对镜头，动作幅度再明显一些会更容易识别。'
               : rate >= 80
                 ? '反应超快！再玩一局冲击满分吧！💫'
                 : '多花一点点时间看准位置就更准啦～加油！💪'}

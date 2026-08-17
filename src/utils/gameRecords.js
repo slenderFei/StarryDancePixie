@@ -119,6 +119,7 @@ export function saveGameRecord(record) {
     completed: !!record.completed,
     damageCount: Number(record.damageCount || 0),
     deathCount: Number(record.deathCount || 0),
+    completedChallenges: Number(record.completedChallenges || 0),
     platformerStats: compactPlatformerStats(record.platformerStats),
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),

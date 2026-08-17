@@ -7,9 +7,11 @@
     "dev": "node ./node_modules/vite/bin/vite.js",
     "dev:node": "node ./node_modules/vite/bin/vite.js",
     "build": "node ./node_modules/vite/bin/vite.js build",
-    "preview": "node ./node_modules/vite/bin/vite.js preview"
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "test": "node --test src/**/*.test.js"
   },
   "dependencies": {
+    "@mediapipe/face_mesh": "^0.4.1633559619",
     "@mediapipe/hands": "^0.4.1675469240",
     "@mediapipe/pose": "^0.5.1675469404",
     "@react-three/drei": "^9.88.0",

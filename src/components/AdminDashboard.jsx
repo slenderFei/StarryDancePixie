@@ -8,6 +8,7 @@ function modeName(record) {
   if (record.playMode === 'fruit') return '单词拼写'
   if (record.playMode === 'rope') return '虚拟跳绳'
   if (record.playMode === 'platformer') return '星光大冒险 · 横版闯关'
+  if (record.playMode === 'gnm') return 'GNM Head · 表情挑战'
   return '体感学单词'
 }
 
@@ -219,7 +220,7 @@ function AdminDashboard({ onExit, onSessionChange }) {
                         ? `${record.jumpCount || record.rankScore || 0} 次`
                         : record.playMode === 'platformer'
                           ? `${record.score || record.rankScore || 0}分 · ${record.hitCount}/${record.totalWords}`
-                        : record.playMode === 'balloon'
+                        : record.playMode === 'balloon' || record.playMode === 'gnm'
                           ? `${record.score || 0}分 · ${record.hitCount}/${record.totalWords}`
                           : `${record.hitCount}/${record.totalWords}`}
                     </span>
@@ -235,7 +236,9 @@ function AdminDashboard({ onExit, onSessionChange }) {
                 <>
                   <div
                     className={`record-summary ${
-                      selectedRecord.playMode === 'balloon' || selectedRecord.playMode === 'platformer'
+                      selectedRecord.playMode === 'balloon' ||
+                      selectedRecord.playMode === 'platformer' ||
+                      selectedRecord.playMode === 'gnm'
                         ? 'record-summary-wide'
                         : ''
                     }`}
@@ -256,7 +259,9 @@ function AdminDashboard({ onExit, onSessionChange }) {
                           : `${selectedRecord.hitCount}/${selectedRecord.totalWords}`}
                       </strong>
                     </div>
-                    {(selectedRecord.playMode === 'balloon' || selectedRecord.playMode === 'platformer') && (
+                    {(selectedRecord.playMode === 'balloon' ||
+                      selectedRecord.playMode === 'platformer' ||
+                      selectedRecord.playMode === 'gnm') && (
                       <div>
                         <span>得分</span>
                         <strong>{selectedRecord.score || selectedRecord.rankScore || 0} 分</strong>
@@ -264,14 +269,16 @@ function AdminDashboard({ onExit, onSessionChange }) {
                     )}
                     <div>
                       <span>
-                        {selectedRecord.playMode === 'rope' || selectedRecord.playMode === 'platformer'
+                        {selectedRecord.playMode === 'rope' ||
+                        selectedRecord.playMode === 'platformer' ||
+                        selectedRecord.playMode === 'gnm'
                           ? '时长'
                           : '漏掉'}
                       </span>
                       <strong>
                         {selectedRecord.playMode === 'rope'
                           ? `${selectedRecord.durationSeconds || 60} 秒`
-                          : selectedRecord.playMode === 'platformer'
+                          : selectedRecord.playMode === 'platformer' || selectedRecord.playMode === 'gnm'
                             ? `${selectedRecord.durationSeconds || 0} 秒`
                             : selectedRecord.missedCount}
                       </strong>
@@ -283,6 +290,16 @@ function AdminDashboard({ onExit, onSessionChange }) {
                       <div>
                         <span>60 秒 {selectedRecord.jumpCount || selectedRecord.rankScore || 0} 次</span>
                         <span>最佳连击 {selectedRecord.bestCombo || 0}</span>
+                      </div>
+                    </div>
+                  ) : selectedRecord.playMode === 'gnm' ? (
+                    <div className="admin-word-list">
+                      <h4>表情挑战成绩</h4>
+                      <div>
+                        <span>完成 {selectedRecord.completedChallenges || selectedRecord.hitCount}/6 个动作</span>
+                        <span>最高连击 {selectedRecord.bestCombo || 0}</span>
+                        <span>总分 {selectedRecord.score || 0}</span>
+                        <span>{selectedRecord.completed ? '全动作完成' : '挑战已结束'}</span>
                       </div>
                     </div>
                   ) : selectedRecord.playMode === 'platformer' ? (

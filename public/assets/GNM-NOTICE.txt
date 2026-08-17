@@ -1,0 +1,9 @@
+GNM Head v3.0 model geometry
+Copyright 2026 Google LLC
+Source: https://github.com/google/GNM
+License: Apache License 2.0
+Full license text: GNM-LICENSE.txt
+
+This directory contains a compact, browser-oriented derivative of the GNM
+Head model data. It includes the neutral mesh, material groups, and a small
+set of expression deformations used by the face challenge game.

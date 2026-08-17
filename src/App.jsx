@@ -16,6 +16,7 @@ const FallingWordsOverlay = lazy(() => import('./components/FallingWordsOverlay'
 const SpellingWordsOverlay = lazy(() => import('./components/SpellingWordsOverlay'))
 const JumpRopeOverlay = lazy(() => import('./components/JumpRopeOverlay'))
 const PlatformerOverlay = lazy(() => import('./components/platformer/PlatformerOverlay'))
+const GNMHeadOverlay = lazy(() => import('./components/GNMHeadOverlay'))
 
 function App() {
   const gameState = useGameStore((s) => s.gameState)
@@ -38,7 +39,8 @@ function App() {
     (playMode === 'balloon' ||
       playMode === 'fruit' ||
       playMode === 'rope' ||
-      playMode === 'platformer')
+      playMode === 'platformer' ||
+      playMode === 'gnm')
   const shouldRenderCanvas = isPlaying && !hideCanvasForArcade
   
   // 初始化语音合成（某些浏览器需要）
@@ -129,6 +131,12 @@ function App() {
         </Suspense>
       )}
 
+      {isArcadePlaying && playMode === 'gnm' && (
+        <Suspense fallback={null}>
+          <GNMHeadOverlay />
+        </Suspense>
+      )}
+
       {/* 游戏 UI */}
       <GameUI
         session={session}
@@ -147,7 +155,7 @@ function App() {
       )}
       
       {/* 背景音乐播放器 */}
-      {isPlaying && <BackgroundMusic />}
+      {isPlaying && playMode !== 'gnm' && <BackgroundMusic />}
       
       {/* 加载屏幕 */}
       {gameState === 'idle' && <LoadingScreen />}

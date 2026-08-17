@@ -1,8 +1,10 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { Pose } from '@mediapipe/pose'
 import { Hands } from '@mediapipe/hands'
+import { FaceMesh } from '@mediapipe/face_mesh'
 import useGameStore from '../store/gameStore'
 import { lmToCanvasMirroredDrawingPx } from '../utils/cameraLandmarks'
+import { computeFaceMetrics } from '../utils/faceMetrics'
 
 // MediaPipe Pose 关键点索引
 const POSE_LANDMARKS = {
@@ -55,6 +57,7 @@ const KEY_BODY_POINTS = [
 const POSE_PUBLISH_INTERVAL_MS = 90
 const HANDS_PUBLISH_INTERVAL_MS = 55
 const HANDS_SEND_INTERVAL_MS = 55
+const FACE_PUBLISH_INTERVAL_MS = 65
 
 function isArcadeMode(gameState, playMode) {
   return (
@@ -64,6 +67,10 @@ function isArcadeMode(gameState, playMode) {
       playMode === 'rope' ||
       playMode === 'platformer')
   )
+}
+
+function isGNMMode(gameState, playMode) {
+  return gameState === 'arcade_playing' && playMode === 'gnm'
 }
 
 function drawSkeletonMini(ctx, landmarks, width, height) {
@@ -188,11 +195,13 @@ function PoseDetector() {
   const canvasRef = useRef(null)
   const poseRef = useRef(null)
   const handsRef = useRef(null)
+  const faceRef = useRef(null)
   const animationRef = useRef(null)
   const poseStatusRef = useRef('')
   const lastPosePublishRef = useRef(0)
   const lastHandsPublishRef = useRef(0)
   const lastHandsSendRef = useRef(0)
+  const lastFacePublishRef = useRef(0)
   const handsActiveRef = useRef(false)
   const actionLockRef = useRef(null)
 
@@ -203,12 +212,14 @@ function PoseDetector() {
   const playMode = useGameStore((s) => s.playMode)
   const setPose = useGameStore((s) => s.setPose)
   const setHands = useGameStore((s) => s.setHands)
+  const setFace = useGameStore((s) => s.setFace)
   const setCameraReady = useGameStore((s) => s.setCameraReady)
   const setPoseVideoIntrinsics = useGameStore((s) => s.setPoseVideoIntrinsics)
   const completeAction = useGameStore((s) => s.completeAction)
   const triggerStarEffect = useGameStore((s) => s.triggerStarEffect)
 
   const arcadeFullscreen = isArcadeMode(gameState, playMode)
+  const gnmMode = isGNMMode(gameState, playMode)
 
   const updatePoseStatus = useCallback((message) => {
     if (poseStatusRef.current === message) return
@@ -221,11 +232,12 @@ function PoseDetector() {
     if (!canvas) return undefined
 
     const applySize = () => {
-      if (arcadeFullscreen) {
+      if (arcadeFullscreen || gnmMode) {
         const rawDpr = window.devicePixelRatio || 1
         const dpr = Math.min(rawDpr, 1.85)
-        const w = window.innerWidth
-        const h = window.innerHeight
+        const rect = gnmMode ? canvas.parentElement?.getBoundingClientRect() : null
+        const w = rect?.width || window.innerWidth
+        const h = rect?.height || window.innerHeight
         canvas.width = Math.floor(w * dpr)
         canvas.height = Math.floor(h * dpr)
         canvas.style.width = `${w}px`
@@ -240,12 +252,12 @@ function PoseDetector() {
 
     applySize()
 
-    if (arcadeFullscreen) {
+    if (arcadeFullscreen || gnmMode) {
       window.addEventListener('resize', applySize)
       return () => window.removeEventListener('resize', applySize)
     }
     return undefined
-  }, [arcadeFullscreen])
+  }, [arcadeFullscreen, gnmMode])
 
   /** 街机全屏：轻量 BlazePose，降低发热与卡顿 */
   useEffect(() => {
@@ -452,6 +464,48 @@ function PoseDetector() {
     [setHands],
   )
 
+  const onFaceResults = useCallback(
+    (results) => {
+      const landmarks = results.multiFaceLandmarks?.[0]
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      const now = performance.now()
+
+      if (canvas && ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
+
+      if (!landmarks) {
+        setFace(null)
+        lastFacePublishRef.current = 0
+        updatePoseStatus('请正对摄像头')
+        return
+      }
+
+      const metrics = computeFaceMetrics(landmarks)
+      const shouldPublishFace = now - lastFacePublishRef.current >= FACE_PUBLISH_INTERVAL_MS
+      setFace({ metrics, updatedAt: now }, { publish: shouldPublishFace })
+      if (shouldPublishFace) lastFacePublishRef.current = now
+      updatePoseStatus('面部已同步')
+
+      if (!canvas || !ctx) return
+      const gs = useGameStore.getState()
+      const rect = canvas.getBoundingClientRect()
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.85)
+      const { width: iw, height: ih } = gs.poseVideoIntrinsics || { width: 0, height: 0 }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.82)'
+      for (let index = 0; index < landmarks.length; index += 4) {
+        const point = lmToCanvasMirroredDrawingPx(landmarks[index], rect.width, rect.height, iw, ih)
+        ctx.beginPath()
+        ctx.arc(point.x, point.y, 1.35, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    },
+    [setFace, updatePoseStatus],
+  )
+
   useEffect(() => {
     let isMounted = true
 
@@ -503,6 +557,25 @@ function PoseDetector() {
           handsRef.current = null
         }
 
+        try {
+          faceRef.current = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          })
+          faceRef.current.setOptions({
+            selfieMode: false,
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.55,
+            minTrackingConfidence: 0.55,
+          })
+          faceRef.current.onResults((results) => {
+            if (isMounted) onFaceResults(results)
+          })
+        } catch (error) {
+          console.error('❌ Error initializing face detection:', error)
+          faceRef.current = null
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: 640,
@@ -533,11 +606,19 @@ function PoseDetector() {
 
                   if (videoEl && poseRef.current && videoEl.readyState === 4) {
                     try {
-                      await poseRef.current.send({ image: videoEl })
                       const gs = useGameStore.getState()
+                      const wantsFace = isGNMMode(gs.gameState, gs.playMode)
                       const wantsHands =
                         gs.gameState === 'arcade_playing' && gs.playMode === 'fruit'
                       const now = performance.now()
+
+                      if (wantsFace && faceRef.current) {
+                        if (gs.currentPose) setPose(null)
+                        await faceRef.current.send({ image: videoEl })
+                      } else {
+                        if (gs.currentFace) setFace(null)
+                        await poseRef.current.send({ image: videoEl })
+                      }
 
                       if (!wantsHands && handsActiveRef.current) {
                         handsActiveRef.current = false
@@ -555,7 +636,7 @@ function PoseDetector() {
                         await handsRef.current.send({ image: videoEl })
                       }
                     } catch (error) {
-                      console.error('❌ Pose detection error:', error)
+                      console.error('❌ Camera detection error:', error)
                     }
                   }
 
@@ -610,12 +691,27 @@ function PoseDetector() {
         tracks.forEach((track) => track.stop())
       }
       setHands(null)
+      setFace(null)
       poseRef.current?.close?.().catch(() => {})
       handsRef.current?.close?.().catch(() => {})
+      faceRef.current?.close?.().catch(() => {})
     }
-  }, [onResults, onHandsResults, setCameraReady, setHands, setPoseVideoIntrinsics])
+  }, [
+    onResults,
+    onHandsResults,
+    onFaceResults,
+    setCameraReady,
+    setFace,
+    setHands,
+    setPose,
+    setPoseVideoIntrinsics,
+  ])
 
-  const wrapperClass = arcadeFullscreen ? 'pose-arcade-fullscreen' : 'pose-detector-container'
+  const wrapperClass = arcadeFullscreen
+    ? 'pose-arcade-fullscreen'
+    : gnmMode
+      ? 'pose-gnm-camera'
+      : 'pose-detector-container'
 
   return (
     <div className={wrapperClass}>
@@ -641,7 +737,9 @@ function PoseDetector() {
             background: isLoading ? '#FFA500' : '#4CAF50',
           }}
         />
-        <span>{isLoading ? '加载中' : arcadeFullscreen ? '全屏体感' : '已连接'}</span>
+        <span>
+          {isLoading ? '加载中' : gnmMode ? 'FACE TRACKING' : arcadeFullscreen ? '全屏体感' : '已连接'}
+        </span>
       </div>
 
       {poseStatus && <div className="pose-status">{poseStatus}</div>}

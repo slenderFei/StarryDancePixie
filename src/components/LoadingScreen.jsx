@@ -193,6 +193,27 @@ function LoadingScreen() {
                 </button>
               </div>
             </div>
+
+            <div
+              className={`mode-card arcade-versus-slot gnm-mode-card ${cameraReady ? 'ready' : ''}`}
+              aria-disabled={!cameraReady}
+            >
+              <span className="mode-icon">◉</span>
+              <span className="mode-title">GNM Head · 表情挑战</span>
+              <span className="mode-desc">
+                用微笑、眨眼和转头驱动 GNM 3D 头像，在限时表情挑战中冲击连击高分。
+              </span>
+              <div className="versus-actions">
+                <button
+                  type="button"
+                  className="mode-sub-btn gnm-start"
+                  onClick={() => startGame({ mode: 'gnm', versus: false })}
+                  disabled={!cameraReady}
+                >
+                  开始同步
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

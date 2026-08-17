@@ -381,6 +381,24 @@
   margin: 8px auto 18px;
 }
 
+.gnm-final-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 24px;
+  color: var(--text-muted-dark);
+}
+
+.gnm-final-summary strong {
+  color: #2364ff;
+  font-size: 30px;
+}
+
+.gnm-final-summary span {
+  font-size: 14px;
+}
+
 .rope-final-board h3 {
   margin: 0 0 4px;
 }

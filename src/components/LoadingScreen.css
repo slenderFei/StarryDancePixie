@@ -261,7 +261,7 @@
 
 .mode-cards {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   text-align: left;
 }
@@ -409,6 +409,15 @@
 
 .mode-sub-btn.platformer-start {
   background: linear-gradient(135deg, #22d3ee, #35d6b4);
+}
+
+.mode-sub-btn.gnm-start {
+  background: linear-gradient(135deg, #2dd4ff, #ff8b7b);
+}
+
+.gnm-mode-card .mode-icon {
+  color: #7ee7ff;
+  text-shadow: 0 0 20px rgba(126, 231, 255, 0.6);
 }
 
 @media (max-width: 1180px) {
