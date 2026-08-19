@@ -20,6 +20,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
   const completedWords = useGameStore((s) => s.completedWords)
   const words = useGameStore((s) => s.words)
   const resetGame = useGameStore((s) => s.resetGame)
+  const startGame = useGameStore((s) => s.startGame)
   const arcadeResult = useGameStore((s) => s.arcadeResult)
   const playMode = useGameStore((s) => s.playMode)
   const arcadeVersus = useGameStore((s) => s.arcadeVersus)
@@ -87,7 +88,9 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
         {accountActions}
         <div className="completion-card arcade-complete">
           <h1 className="completion-title">
-            {isGnm
+            {isRope && r.newRecord
+              ? '🏆 新纪录！'
+              : isGnm
               ? r.completed
                 ? '表情同步满分！'
                 : '表情挑战完成'
@@ -127,7 +130,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               </span>
               <span className="stat-value">
                 {isRope
-                  ? r.durationSeconds || 60
+                  ? r.pace || r.jumpCount || 0
                   : isBalloon
                     ? learned
                     : isPlatformer
@@ -138,7 +141,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               </span>
               <span className="stat-label">
                 {isRope
-                  ? '秒'
+                  ? '平均配速 · 次/分'
                   : isBalloon
                     ? '击破单词'
                     : isPlatformer
@@ -148,7 +151,13 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                         : '本局总数'}
               </span>
             </div>
-            {!isRope && (
+            {isRope ? (
+              <div className="stat-item">
+                <span className="stat-icon">⚡</span>
+                <span className="stat-value">{r.grade || 'C'}</span>
+                <span className="stat-label">挑战评级</span>
+              </div>
+            ) : (
               <div className="stat-item">
               <span className="stat-icon">{isSpelling ? '📝' : isPlatformer ? '📚' : isGnm ? '○' : '💨'}</span>
               <span className="stat-value">{isPlatformer ? learned : r.missed}</span>
@@ -231,10 +240,22 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
             </div>
           )}
 
-          <button type="button" className="play-again-btn" onClick={resetGame}>
-            <span>🏠</span>
-            返回选模式
-          </button>
+          <div className="completion-actions">
+            {isRope && (
+              <button
+                type="button"
+                className="play-again-btn"
+                onClick={() => startGame({ mode: 'rope', versus: false })}
+              >
+                <span>↻</span>
+                再跳一局
+              </button>
+            )}
+            <button type="button" className={`play-again-btn ${isRope ? 'secondary' : ''}`} onClick={resetGame}>
+              <span>🏠</span>
+              返回选模式
+            </button>
+          </div>
 
           <p className="encouragement">
             {isSpelling

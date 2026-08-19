@@ -100,6 +100,15 @@ export function getJumpRopeLeaderboard(limit = 5) {
     .slice(0, limit)
 }
 
+export function getJumpRopePersonalBest(username) {
+  return readRecords()
+    .filter((record) => record.playMode === 'rope' && record.username === username)
+    .reduce(
+      (best, record) => Math.max(best, Number(record.jumpCount || record.rankScore || record.hitCount || 0)),
+      0,
+    )
+}
+
 export function saveGameRecord(record) {
   const records = readRecords()
   const normalized = {
@@ -113,6 +122,10 @@ export function saveGameRecord(record) {
     missedCount: Number(record.missedCount || 0),
     score: Number(record.score || 0),
     bestCombo: Number(record.bestCombo || 0),
+    pace: Number(record.pace || 0),
+    grade: record.grade || '',
+    previousBest: Number(record.previousBest || 0),
+    newRecord: !!record.newRecord,
     player1Score: Number(record.player1Score || 0),
     player2Score: Number(record.player2Score || 0),
     coins: Number(record.coins || 0),

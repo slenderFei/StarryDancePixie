@@ -28,6 +28,8 @@ const AIR_FRICTION = 0.96
 const AIR_CONTROL = 0.56
 const JUMP_VELOCITY = 11.8
 const JUMP_COOLDOWN_MS = 360
+const COYOTE_TIME_MS = 130
+const JUMP_BUFFER_MS = 150
 const KEYBOARD_CALIBRATION = {
   centerX: 0.5,
   hipY: 0.6,
@@ -454,6 +456,8 @@ function PlatformerOverlay() {
     visibleCount: 0,
     calibrationProgress: 0,
     challenge: null,
+    levelProgress: 0,
+    inputMode: 'pose',
   })
 
   const resizeCanvas = useCallback(() => {
@@ -491,6 +495,8 @@ function PlatformerOverlay() {
       visibleCount: s.visibleCount || 0,
       calibrationProgress: s.calibrationProgress || 0,
       challenge: s.challenge,
+      levelProgress: clamp(s.player.x / level.finishX, 0, 1),
+      inputMode: s.inputMode,
     })
   }, [])
 
@@ -522,6 +528,9 @@ function PlatformerOverlay() {
     s.damageCount += 1
     s.player.health -= 1
     s.player.invincibleUntil = now + 1300
+    s.player.vx = s.player.vx >= 0 ? -3.8 : 3.8
+    s.player.vy = Math.max(s.player.vy, 5.4)
+    s.player.grounded = false
     s.status = '小心障碍'
     playSuccessTone(1)
 
@@ -531,6 +540,30 @@ function PlatformerOverlay() {
       s.finished = true
     }
   }, [])
+
+  const setTouchControl = useCallback((control, active) => {
+    const key = `touch-${control}`
+    if (active) keysRef.current.add(key)
+    else keysRef.current.delete(key)
+  }, [])
+
+  const startTouchMode = useCallback(() => {
+    const s = stateRef.current
+    if (!s || s.phase !== 'calibrating') return
+    s.calibration = KEYBOARD_CALIBRATION
+    s.inputMode = 'touch'
+    s.calibrationProgress = 1
+    s.visibleCount = 6
+    startCountdown(s, performance.now(), '触控模式准备')
+    publish()
+  }, [publish])
+
+  const handleJumpPress = useCallback(() => {
+    const s = stateRef.current
+    if (s?.phase === 'wordChallenge') completeChallenge('touch')
+    if (s?.phase === 'playing') s.jumpBufferedAt = performance.now()
+    setTouchControl('jump', true)
+  }, [completeChallenge, setTouchControl])
 
   const finishRun = useCallback((completed) => {
     const s = stateRef.current
@@ -857,6 +890,7 @@ function PlatformerOverlay() {
       poseSnapshot: null,
       calibrationSamples: [],
       calibration: null,
+      inputMode: 'pose',
       words: arcadeSessionWords.slice(0, TOTAL_WORDS),
       player: {
         x: firstLevel.spawn.x,
@@ -883,6 +917,8 @@ function PlatformerOverlay() {
       lastJumpAt: -Infinity,
       poseJumpActive: false,
       keyJumpActive: false,
+      lastGroundedAt: -Infinity,
+      jumpBufferedAt: -Infinity,
       lastPublishAt: 0,
     }
     resizeCanvas()
@@ -903,6 +939,7 @@ function PlatformerOverlay() {
       const s = stateRef.current
       if (s?.phase === 'calibrating' && (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar')) {
         s.calibration = KEYBOARD_CALIBRATION
+        s.inputMode = 'keyboard'
         s.calibrationProgress = 1
         s.visibleCount = 6
         startCountdown(s, performance.now(), '键盘模式准备')
@@ -949,6 +986,7 @@ function PlatformerOverlay() {
               hipY: median(s.calibrationSamples.map((sample) => sample.hipY)),
               bodyHeight: median(s.calibrationSamples.map((sample) => sample.bodyHeight)),
             }
+            s.inputMode = 'pose'
             startCountdown(s, now)
           }
         } else {
@@ -965,7 +1003,7 @@ function PlatformerOverlay() {
           s.status = `${currentLevel(s).name} 开始`
         }
       } else if (s.phase === 'wordChallenge') {
-        const jumpNow = pose.ok && pose.handsUp
+        const jumpNow = s.inputMode === 'pose' && pose.ok && pose.handsUp
         if (jumpNow && !s.poseJumpActive) {
           completeChallenge('gesture')
         }
@@ -974,18 +1012,18 @@ function PlatformerOverlay() {
       } else if (s.phase === 'playing') {
         const level = currentLevel(s)
         const keys = keysRef.current
-        const leftKey = keys.has('a') || keys.has('arrowleft')
-        const rightKey = keys.has('d') || keys.has('arrowright')
-        const jumpKey = keys.has(' ') || keys.has('spacebar') || keys.has('w') || keys.has('arrowup')
+        const leftKey = keys.has('a') || keys.has('arrowleft') || keys.has('touch-left')
+        const rightKey = keys.has('d') || keys.has('arrowright') || keys.has('touch-right')
+        const jumpKey = keys.has(' ') || keys.has('spacebar') || keys.has('w') || keys.has('arrowup') || keys.has('touch-jump')
         let move = 0
         let poseJump = false
 
-        if (pose.ok && s.calibration) {
+        if (s.inputMode === 'pose' && pose.ok && s.calibration) {
           const dx = pose.centerX - s.calibration.centerX
           if (dx < -0.042) move -= 1
           if (dx > 0.042) move += 1
           poseJump = pose.handsUp || pose.hipY < s.calibration.hipY - s.calibration.bodyHeight * 0.075
-        } else if (!pose.ok) {
+        } else if (s.inputMode === 'pose' && !pose.ok) {
           s.status = '回到镜头继续'
         }
 
@@ -1005,10 +1043,16 @@ function PlatformerOverlay() {
           if (Math.abs(p.vx) < 0.02) p.vx = 0
         }
 
-        if (jumpPressed && p.grounded && now - s.lastJumpAt > JUMP_COOLDOWN_MS) {
+        if (p.grounded) s.lastGroundedAt = now
+        if (jumpPressed) s.jumpBufferedAt = now
+        const canJump = p.grounded || now - s.lastGroundedAt <= COYOTE_TIME_MS
+        const hasBufferedJump = now - s.jumpBufferedAt <= JUMP_BUFFER_MS
+        if (hasBufferedJump && canJump && now - s.lastJumpAt > JUMP_COOLDOWN_MS) {
           p.vy = JUMP_VELOCITY
           p.grounded = false
           s.lastJumpAt = now
+          s.jumpBufferedAt = -Infinity
+          s.lastGroundedAt = -Infinity
           s.status = '跳跃'
           playSuccessTone(1)
         }
@@ -1179,11 +1223,14 @@ function PlatformerOverlay() {
           <span>时间</span>
           <strong>{ui.secondsLeft}</strong>
         </div>
+        <div className="platformer-progress" aria-label={`本关进度 ${Math.round(ui.levelProgress * 100)}%`}>
+          <i style={{ width: `${Math.round(ui.levelProgress * 100)}%` }} />
+        </div>
       </section>
 
       <div className="platformer-status">
         <span>{ui.status}</span>
-        <em>入镜 {ui.quality}%</em>
+        <em>{ui.inputMode === 'pose' ? `入镜 ${ui.quality}%` : ui.inputMode === 'touch' ? '触控' : '键盘'}</em>
       </div>
 
       {ui.phase === 'calibrating' && (
@@ -1196,6 +1243,7 @@ function PlatformerOverlay() {
           <p className={ui.visibleCount >= 4 ? 'ready' : ''}>全身站进中央框</p>
           <p className={ui.quality >= 66 ? 'ready' : ''}>头、肩、脚保持可见</p>
           <p className={ui.calibrationProgress >= 0.5 ? 'ready' : ''}>站稳直到倒计时开始</p>
+          <button type="button" onClick={startTouchMode}>使用触控开始</button>
         </div>
       )}
 
@@ -1216,9 +1264,40 @@ function PlatformerOverlay() {
       )}
 
       <div className="platformer-controls">
-        <span>左倾 / A</span>
-        <span>右倾 / D</span>
-        <span>举手跳 / Space</span>
+        <div className="platformer-control-hints" aria-hidden="true">
+          <span>左倾 / A</span>
+          <span>右倾 / D</span>
+          <span>举手跳 / Space</span>
+        </div>
+        <div className="platformer-touch-controls" aria-label="触控操作">
+          <div>
+            <button
+              type="button"
+              aria-label="向左移动"
+              onPointerDown={() => setTouchControl('left', true)}
+              onPointerUp={() => setTouchControl('left', false)}
+              onPointerCancel={() => setTouchControl('left', false)}
+              onPointerLeave={() => setTouchControl('left', false)}
+            >←</button>
+            <button
+              type="button"
+              aria-label="向右移动"
+              onPointerDown={() => setTouchControl('right', true)}
+              onPointerUp={() => setTouchControl('right', false)}
+              onPointerCancel={() => setTouchControl('right', false)}
+              onPointerLeave={() => setTouchControl('right', false)}
+            >→</button>
+          </div>
+          <button
+            type="button"
+            className="platformer-jump-button"
+            aria-label={challenge ? '收集单词' : '跳跃'}
+            onPointerDown={handleJumpPress}
+            onPointerUp={() => setTouchControl('jump', false)}
+            onPointerCancel={() => setTouchControl('jump', false)}
+            onPointerLeave={() => setTouchControl('jump', false)}
+          >{challenge ? '✓' : '↑'}</button>
+        </div>
       </div>
     </div>
   )

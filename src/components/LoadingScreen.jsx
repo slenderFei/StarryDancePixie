@@ -173,21 +173,17 @@ function LoadingScreen() {
               </div>
             </div>
 
-            <div
-              className={`mode-card arcade-versus-slot ${cameraReady ? 'ready' : ''}`}
-              aria-disabled={!cameraReady}
-            >
+            <div className="mode-card arcade-versus-slot ready">
               <span className="mode-icon">🏃</span>
               <span className="mode-title">星光大冒险 · 横版闯关</span>
               <span className="mode-desc">
-                三段原创横版关卡，用身体左右倾斜移动，举起双手跳跃，顶开单词方块通关。
+                三段原创横版关卡，支持体感、键盘和触控操作，收集单词方块冲向终点。
               </span>
               <div className="versus-actions">
                 <button
                   type="button"
                   className="mode-sub-btn platformer-start"
                   onClick={() => startGame({ mode: 'platformer', versus: false })}
-                  disabled={!cameraReady}
                 >
                   开始冒险
                 </button>

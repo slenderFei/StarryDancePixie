@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import useGameStore, { getLatestPose } from '../store/gameStore'
 import { lmToOverlayPx } from '../utils/cameraLandmarks'
-import { getJumpRopeLeaderboard } from '../utils/gameRecords'
+import { getSession } from '../utils/auth'
+import { getJumpRopeLeaderboard, getJumpRopePersonalBest } from '../utils/gameRecords'
+import {
+  effectiveRoundElapsed,
+  evaluateJumpLanding,
+  nextJumpCombo,
+  resumeRoundStart,
+} from '../utils/jumpRopeLogic'
 import { playSuccessTone } from '../utils/soundEffects'
 import './JumpRopeOverlay.css'
 
@@ -75,9 +82,9 @@ function formatTime(ms) {
   return Math.max(0, Math.ceil(ms / 1000))
 }
 
-function formatPace(count, roundStartedAt) {
+function formatPace(count, roundStartedAt, now = performance.now()) {
   if (!roundStartedAt || count <= 0) return 0
-  const elapsedSeconds = Math.max(1, (performance.now() - roundStartedAt) / 1000)
+  const elapsedSeconds = Math.max(1, (now - roundStartedAt) / 1000)
   return Math.round((count / elapsedSeconds) * 60)
 }
 
@@ -117,6 +124,15 @@ function JumpRopeOverlay() {
     rankPreview: 1,
     calibrated: false,
     leaderboard: [],
+    bodyReady: false,
+    paused: false,
+    counted: false,
+    newRecord: false,
+    previousBest: 0,
+    targetRemaining: 1,
+    milestone: '',
+    urgent: false,
+    manualPaused: false,
   })
 
   const resizeCanvas = useCallback(() => {
@@ -134,11 +150,14 @@ function JumpRopeOverlay() {
   const publish = useCallback(() => {
     const s = stateRef.current
     if (!s) return
+    const wallNow = performance.now()
+    const pausedAt = s.manualPausedAt || s.missingSince
+    const now = pausedAt && s.roundStartedAt ? pausedAt : wallNow
+    const elapsed = effectiveRoundElapsed(now, s.roundStartedAt, s.missingSince)
+    const secondsLeft = s.roundStartedAt ? formatTime(ROUND_MS - elapsed) : 60
     setUi({
       count: s.count,
-      secondsLeft: s.roundStartedAt
-        ? formatTime(ROUND_MS - (performance.now() - s.roundStartedAt))
-        : 60,
+      secondsLeft,
       status: s.status,
       phase: s.phase,
       countdown: s.countdown,
@@ -147,12 +166,46 @@ function JumpRopeOverlay() {
       bestScore: Math.max(s.bestScore, s.count),
       combo: s.combo,
       bestCombo: Math.max(s.bestCombo, s.combo),
-      pace: formatPace(s.count, s.roundStartedAt),
+      pace: formatPace(s.count, s.roundStartedAt, now),
       rankPreview: rankForScore(s.leaderboard, s.count),
       calibrated: s.calibrated,
       leaderboard: s.leaderboard,
+      bodyReady: s.bodyReady,
+      paused: !!(
+        s.roundStartedAt &&
+        (s.manualPaused ||
+          (s.missingSince && wallNow - s.missingSince >= POSE_LOST_RESET_MS))
+      ),
+      manualPaused: s.manualPaused,
+      counted: wallNow < (s.jumpFlashUntil || 0),
+      newRecord: s.count > s.personalBest,
+      previousBest: s.personalBest,
+      targetRemaining: Math.max(0, s.personalBest + 1 - s.count),
+      milestone: wallNow < (s.milestoneUntil || 0) ? s.milestone : '',
+      urgent: !!s.roundStartedAt && !pausedAt && secondsLeft <= 10,
     })
   }, [])
+
+  const togglePause = useCallback(() => {
+    const s = stateRef.current
+    if (!s?.roundStartedAt) return
+    const now = performance.now()
+    if (s.manualPaused) {
+      s.roundStartedAt = resumeRoundStart(s.roundStartedAt, s.manualPausedAt, now)
+      s.manualPaused = false
+      s.manualPausedAt = 0
+      s.needsResumeBaseline = true
+      s.ignoreUntil = now + RESUME_SETTLE_MS
+      s.status = '重新就位'
+    } else {
+      s.manualPaused = true
+      s.manualPausedAt = now
+      s.inAir = false
+      s.combo = 0
+      s.status = '已暂停'
+    }
+    publish()
+  }, [publish])
 
   const drawScene = useCallback((pose, now) => {
     const canvas = canvasRef.current
@@ -302,11 +355,16 @@ function JumpRopeOverlay() {
       rankScore: s.count,
       score: s.count,
       bestCombo: s.bestCombo,
+      pace: formatPace(s.count, s.roundStartedAt, s.roundStartedAt + ROUND_MS),
+      grade: gradeForCount(s.count),
+      previousBest: s.personalBest,
+      newRecord: s.count > s.personalBest,
     })
   }, [finishArcade])
 
   useEffect(() => {
     const leaderboard = getJumpRopeLeaderboard(5)
+    const personalBest = getJumpRopePersonalBest(getSession()?.username || 'guest')
     stateRef.current = {
       mountedAt: performance.now(),
       roundStartedAt: 0,
@@ -328,8 +386,10 @@ function JumpRopeOverlay() {
       phase: 'calibrating',
       countdown: 3,
       quality: 0,
+      bodyReady: false,
       calibrationProgress: 0,
-      bestScore: leaderboard[0]?.jumpCount || 0,
+      bestScore: personalBest,
+      personalBest,
       count: 0,
       combo: 0,
       bestCombo: 0,
@@ -342,6 +402,12 @@ function JumpRopeOverlay() {
       status: '校准中',
       leaderboard,
       jumpBursts: [],
+      milestone: '',
+      milestoneUntil: 0,
+      lastSecondAnnounced: 60,
+      manualPaused: false,
+      manualPausedAt: 0,
+      needsResumeBaseline: false,
       finished: false,
     }
     resizeCanvas()
@@ -360,7 +426,7 @@ function JumpRopeOverlay() {
       const s = stateRef.current
       if (!s || s.finished) return
       const now = performance.now()
-      const roundElapsed = s.roundStartedAt ? now - s.roundStartedAt : 0
+      const roundElapsed = effectiveRoundElapsed(now, s.roundStartedAt, s.missingSince)
       const pose = getLatestPose()
       const vw = window.innerWidth || 390
       const vh = window.innerHeight || 820
@@ -380,11 +446,33 @@ function JumpRopeOverlay() {
       const visibleCount = [leftShoulder, rightShoulder, leftHip, rightHip, leftAnkle, rightAnkle].filter(Boolean).length
       const hasStableBody = foot && hip && shoulder && visibleCount >= MIN_VISIBLE_POINTS
       s.quality = Math.round((visibleCount / 6) * 100)
+      s.bodyReady = !!hasStableBody
+
+      if (s.manualPaused) {
+        drawScene(pose, now)
+        if (now - s.lastPublishAt > 130) {
+          s.lastPublishAt = now
+          publish()
+        }
+        rafRef.current = requestAnimationFrame(step)
+        return
+      }
+
+      if (hasStableBody && s.needsResumeBaseline) {
+        s.baselineY = foot.y
+        s.baselineHipY = hip.y
+        s.smoothedFootY = foot.y
+        s.smoothedHipY = hip.y
+        s.needsResumeBaseline = false
+      }
 
       if (hasStableBody && s.missingSince) {
         const missingFor = now - s.missingSince
         if (s.calibrated && !s.roundStartedAt) {
           s.countdownStartedAt += missingFor
+        }
+        if (s.roundStartedAt) {
+          s.roundStartedAt = resumeRoundStart(s.roundStartedAt, s.missingSince, now)
         }
         if (s.roundStartedAt && missingFor > POSE_LOST_RESET_MS) {
           s.inAir = false
@@ -510,8 +598,7 @@ function JumpRopeOverlay() {
         if (
           now >= (s.ignoreUntil || 0) &&
           s.inAir &&
-          (airborneMs > MAX_AIRBORNE_MS ||
-            (gap > MAX_JUMP_GAP_MS && lift < s.airThresholdPx * 0.65))
+          airborneMs > MAX_AIRBORNE_MS
         ) {
           s.inAir = false
           s.airborneStartedAt = 0
@@ -521,15 +608,19 @@ function JumpRopeOverlay() {
         }
 
         if (now >= (s.ignoreUntil || 0) && s.inAir && isLanded && gap >= MIN_JUMP_GAP_MS) {
-          const enoughAirTime = airborneMs >= MIN_AIRBORNE_MS && airborneMs <= MAX_AIRBORNE_MS
-          const enoughLift =
-            s.jumpPeakLift >= s.airThresholdPx &&
-            (s.jumpPeakHipLift >= s.hipThresholdPx * 0.72 ||
-              s.jumpPeakLift >= s.airThresholdPx * 1.32)
+          const landing = evaluateJumpLanding({
+            airborneMs,
+            peakFootLift: s.jumpPeakLift,
+            peakHipLift: s.jumpPeakHipLift,
+            footThreshold: s.airThresholdPx,
+            hipThreshold: s.hipThresholdPx,
+            minAirborneMs: MIN_AIRBORNE_MS,
+            maxAirborneMs: MAX_AIRBORNE_MS,
+          })
           s.inAir = false
           s.airborneStartedAt = 0
-          if (enoughAirTime && enoughLift) {
-            const nextCombo = gap <= MAX_JUMP_GAP_MS ? s.combo + 1 : 1
+          if (landing.valid) {
+            const nextCombo = nextJumpCombo(s.combo, gap, MAX_JUMP_GAP_MS)
             s.lastJumpAt = now
             s.count += 1
             s.combo = nextCombo
@@ -537,13 +628,20 @@ function JumpRopeOverlay() {
             s.statusHoldUntil = now + 420
             s.jumpFlashUntil = now + 240
             s.status = s.combo >= 10 ? `${s.combo} 连击` : '计数 +1'
+            if (s.count === s.personalBest + 1 && s.personalBest > 0) {
+              s.milestone = '刷新个人最佳'
+              s.milestoneUntil = now + 1400
+            } else if (s.count % 10 === 0) {
+              s.milestone = `${s.count} 次里程碑`
+              s.milestoneUntil = now + 1100
+            }
             s.jumpBursts.push({
               x: foot?.x || vw / 2,
               y: foot?.y || vh * 0.76,
               combo: s.combo,
               createdAt: now,
             })
-            playSuccessTone(Math.min(5, 1 + (s.count % 5)))
+            playSuccessTone(s.milestoneUntil > now ? 5 : Math.min(5, 1 + (s.count % 5)))
           } else {
             s.combo = 0
             s.statusHoldUntil = now + 320
@@ -559,6 +657,16 @@ function JumpRopeOverlay() {
         if (!s.inAir && isLanded) {
           s.baselineY = s.baselineY * 0.988 + s.smoothedFootY * 0.012
           s.baselineHipY = s.baselineHipY * 0.99 + s.smoothedHipY * 0.01
+        }
+      }
+
+      if (s.roundStartedAt && !s.missingSince) {
+        const secondsLeft = formatTime(ROUND_MS - effectiveRoundElapsed(now, s.roundStartedAt))
+        if (secondsLeft <= 10 && secondsLeft !== s.lastSecondAnnounced) {
+          s.lastSecondAnnounced = secondsLeft
+          if (secondsLeft === 10 || secondsLeft === 5 || secondsLeft <= 3) {
+            playSuccessTone(secondsLeft <= 3 ? 4 : 2)
+          }
         }
       }
 
@@ -591,7 +699,7 @@ function JumpRopeOverlay() {
   const topThree = ui.leaderboard.slice(0, 3)
 
   return (
-    <div className="jump-rope-overlay">
+    <div className={`jump-rope-overlay ${ui.urgent ? 'is-urgent' : ''}`}>
       <canvas ref={canvasRef} className="jump-rope-canvas" />
       <section className="jump-rope-hud" aria-label="虚拟跳绳挑战">
         <div className="jump-rope-title">
@@ -605,49 +713,78 @@ function JumpRopeOverlay() {
           <span>TIME</span>
           <strong>{ui.secondsLeft}</strong>
         </div>
-        <div className="jump-rope-mode-switch">
-          <span className="active">SOLO</span>
-          <span>DUO</span>
-        </div>
+        {ui.phase === 'active' && (
+          <div className="jump-rope-mode-switch">
+            <button
+              type="button"
+              onClick={togglePause}
+              aria-label={ui.manualPaused ? '继续挑战' : '暂停挑战'}
+            >{ui.manualPaused ? '▶ 继续' : 'Ⅱ 暂停'}</button>
+            <span>60 SEC</span>
+          </div>
+        )}
       </section>
 
-      <section className="jump-rope-scorecard">
-        <span className="score-label">JUMPS</span>
-        <strong>{ui.count}</strong>
-        <em>{ui.status}</em>
-        <div className="jump-rope-combo">
-          <span>{ui.combo}</span>
-          <small>COMBO</small>
-        </div>
-      </section>
+      {ui.phase === 'active' && (
+        <>
+          <section className={`jump-rope-scorecard ${ui.counted ? 'is-counted' : ''}`}>
+            <span className="score-label">JUMPS</span>
+            <strong>{ui.count}</strong>
+            <em>{ui.status}</em>
+            <div className="jump-rope-combo">
+              <span>{ui.combo}</span>
+              <small>COMBO</small>
+            </div>
+            <div className={`jump-rope-target ${ui.newRecord ? 'is-record' : ''}`}>
+              <span>{ui.newRecord ? 'NEW BEST' : ui.previousBest ? '个人纪录' : '首次挑战'}</span>
+              <strong>{ui.newRecord ? `+${ui.count - ui.previousBest}` : ui.previousBest ? `还差 ${ui.targetRemaining}` : '开始计数'}</strong>
+            </div>
+          </section>
 
-      <section className="jump-rope-stats" aria-label="跳绳数据">
-        <div>
-          <span>配速</span>
-          <strong>{ui.pace}</strong>
-          <em>次/分</em>
-        </div>
-        <div>
-          <span>最佳</span>
-          <strong>{Math.max(ui.bestScore, ui.count)}</strong>
-          <em>个人/榜单</em>
-        </div>
-        <div>
-          <span>榜位</span>
-          <strong>#{ui.rankPreview}</strong>
-          <em>实时预估</em>
-        </div>
-        <div>
-          <span>评级</span>
-          <strong>{grade}</strong>
-          <em>挑战等级</em>
-        </div>
-      </section>
+          {ui.milestone && <div className="jump-rope-milestone">{ui.milestone}</div>}
+
+          <section className="jump-rope-stats" aria-label="跳绳数据">
+            <div>
+              <span>配速</span>
+              <strong>{ui.pace}</strong>
+              <em>次/分</em>
+            </div>
+            <div>
+              <span>最佳</span>
+              <strong>{Math.max(ui.bestScore, ui.count)}</strong>
+              <em>个人纪录</em>
+            </div>
+            <div>
+              <span>榜位</span>
+              <strong>#{ui.rankPreview}</strong>
+              <em>实时预估</em>
+            </div>
+            <div>
+              <span>评级</span>
+              <strong>{grade}</strong>
+              <em>挑战等级</em>
+            </div>
+          </section>
+        </>
+      )}
 
       {ui.phase !== 'active' && (
         <div className={`jump-rope-ready jump-rope-ready-${ui.phase}`}>
           <span>{ui.phase === 'calibrating' ? '站稳校准' : '准备'}</span>
           <strong>{ui.phase === 'calibrating' ? `${ui.calibrationProgress}%` : ui.countdown}</strong>
+          {ui.phase === 'calibrating' && (
+            <div className="jump-rope-calibration-status">
+              <i className={ui.bodyReady ? 'ready' : ''} />
+              <span>{ui.bodyReady ? '身体已识别，保持站稳' : '请让肩、腰和双脚进入画面'}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {ui.paused && (
+        <div className="jump-rope-paused" role="status">
+          <strong>已暂停</strong>
+          <span>{ui.manualPaused ? '点击顶部继续挑战' : '回到镜头后继续计时'}</span>
         </div>
       )}
 
@@ -672,7 +809,7 @@ function JumpRopeOverlay() {
       <aside className="jump-rope-coach">
         <span>入镜</span>
         <strong>{ui.quality}%</strong>
-        <em>{ui.phase === 'active' ? '保持节奏' : ui.phase === 'calibrating' ? '站稳校准' : '准备起跳'}</em>
+        <em>{ui.paused ? '等待重新入镜' : ui.phase === 'active' ? ui.status : ui.phase === 'calibrating' ? '站稳校准' : '准备起跳'}</em>
       </aside>
     </div>
   )
