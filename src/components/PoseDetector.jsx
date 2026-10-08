@@ -63,7 +63,6 @@ function isArcadeMode(gameState, playMode) {
   return (
     gameState === 'arcade_playing' &&
     (playMode === 'balloon' ||
-      playMode === 'fruit' ||
       playMode === 'rope' ||
       playMode === 'platformer' ||
       playMode === 'herb' ||
@@ -77,6 +76,10 @@ function isGNMMode(gameState, playMode) {
 
 function isCatWarriorMode(gameState, playMode) {
   return gameState === 'arcade_playing' && playMode === 'catwarrior'
+}
+
+function isTypingMode(gameState, playMode) {
+  return gameState === 'arcade_playing' && playMode === 'fruit'
 }
 
 function drawSkeletonMini(ctx, landmarks, width, height) {
@@ -227,6 +230,7 @@ function PoseDetector() {
   const arcadeFullscreen = isArcadeMode(gameState, playMode)
   const gnmMode = isGNMMode(gameState, playMode)
   const catWarriorMode = isCatWarriorMode(gameState, playMode)
+  const typingMode = isTypingMode(gameState, playMode)
 
   const updatePoseStatus = useCallback((message) => {
     if (poseStatusRef.current === message) return
@@ -393,7 +397,7 @@ function PoseDetector() {
 
         if (gs.gameState === 'arcade_playing') {
           if (gs.playMode === 'fruit') {
-            updatePoseStatus('✍️ 左手张开写字｜握拳提交｜双手交叉重写')
+            updatePoseStatus('⌨️ 键盘输入模式：输入目标单词')
           } else if (gs.playMode === 'rope') {
             updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
           } else if (gs.playMode === 'platformer') {
@@ -619,8 +623,7 @@ function PoseDetector() {
                     try {
                       const gs = useGameStore.getState()
                       const wantsFace = isGNMMode(gs.gameState, gs.playMode)
-                      const wantsHands =
-                        gs.gameState === 'arcade_playing' && gs.playMode === 'fruit'
+                      const wantsHands = false
                       const now = performance.now()
 
                       if (wantsFace && faceRef.current) {
@@ -718,7 +721,9 @@ function PoseDetector() {
     setPoseVideoIntrinsics,
   ])
 
-  const wrapperClass = catWarriorMode
+  const wrapperClass = typingMode
+    ? 'pose-keyboard-hidden'
+    : catWarriorMode
     ? 'pose-cat-camera'
     : arcadeFullscreen
     ? 'pose-arcade-fullscreen'

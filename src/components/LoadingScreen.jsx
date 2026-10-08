@@ -131,23 +131,17 @@ function LoadingScreen() {
               </div>
             </div>
 
-            <div
-              className={`mode-card arcade-versus-slot ${cameraReady ? 'ready' : ''}`}
-              aria-disabled={!cameraReady}
-            >
+            <div className="mode-card arcade-versus-slot ready">
               <span className="mode-icon">✍️</span>
-              <span className="mode-title">单词拼写</span>
-              <span className="mode-desc">
-                只看中文释义，用右手食指在摄像头画面中拼出英文单词。一局随机 5 词。
-              </span>
+              <span className="mode-title">单词键盘练习</span>
+              <span className="mode-desc">参考 Type Words 的键盘跟打体验，看中文释义输入英文单词，实时查看 WPM、准确率与连击。一局随机 5 词。</span>
               <div className="versus-actions">
                 <button
                   type="button"
                   className="mode-sub-btn spelling-start"
                   onClick={() => startGame({ mode: 'fruit', versus: false })}
-                  disabled={!cameraReady}
                 >
-                  开始拼写
+                  开始练习
                 </button>
               </div>
             </div>

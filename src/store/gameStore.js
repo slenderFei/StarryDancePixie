@@ -185,6 +185,8 @@ const useGameStore = create((set, get) => ({
       completedChallenges: result.completedChallenges,
       completedHerbs: result.completedHerbs,
       catMissions: result.catMissions,
+      typingAccuracy: result.typingAccuracy,
+      typingWpm: result.typingWpm,
     })
 
     set({

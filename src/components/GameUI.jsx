@@ -77,6 +77,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const isGnm = r.playMode === 'gnm'
     const isHerb = r.playMode === 'herb'
     const isCat = r.playMode === 'catwarrior'
+    const typingAccuracy = Number(r.typingAccuracy ?? rate)
+    const typingWpm = Number(r.typingWpm || 0)
     const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
     const balloonScore = Number(r.score || 0)
     const platformerScore = Number(r.score || r.rankScore || 0)
@@ -122,6 +124,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? platformerScore
                       : isGnm
                         ? r.score || 0
+                        : isSpelling
+                          ? r.score || 0
                         : isHerb
                           ? r.score || 0
                         : isCat
@@ -131,7 +135,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <span className="stat-label">
                 {isRope
                   ? '跳绳次数'
-                  : isBalloon || isPlatformer || isGnm || isHerb || isCat
+                  : isBalloon || isPlatformer || isGnm || isHerb || isCat || isSpelling
                     ? '本局得分'
                     : '拼对单词'}
               </span>
@@ -149,6 +153,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? r.coins || 0
                       : isGnm
                         ? r.completedChallenges || 0
+                        : isSpelling
+                          ? learned
                         : isHerb
                           ? r.completedHerbs || learned
                         : isCat
@@ -158,8 +164,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <span className="stat-label">
                 {isRope
                   ? '平均配速 · 次/分'
-                  : isBalloon
-                    ? '击破单词'
+                    : isBalloon
+                      ? '击破单词'
+                    : isSpelling
+                      ? '完成单词'
                     : isPlatformer
                       ? '金币'
                       : isGnm
@@ -179,18 +187,20 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               </div>
             ) : (
               <div className="stat-item">
-              <span className="stat-icon">{isSpelling ? '📝' : isPlatformer ? '📚' : isGnm ? '○' : '💨'}</span>
-              <span className="stat-value">{isPlatformer ? learned : r.missed}</span>
+              <span className="stat-icon">{isSpelling ? '🎯' : isPlatformer ? '📚' : isGnm ? '○' : '💨'}</span>
+              <span className="stat-value">{isSpelling ? `${typingAccuracy}%` : isPlatformer ? learned : r.missed}</span>
               <span className="stat-label">
-                {isSpelling ? '未完成' : isPlatformer ? '学到单词' : isGnm ? '跳过动作' : '漏接'}
+                {isSpelling ? '准确率' : isPlatformer ? '学到单词' : isGnm ? '跳过动作' : '漏接'}
               </span>
               </div>
             )}
             <div className="stat-item">
-              <span className="stat-icon">{isPlatformer ? '🏁' : isGnm ? '↯' : isCat ? '⭐' : '🏆'}</span>
+              <span className="stat-icon">{isSpelling ? '⌨️' : isPlatformer ? '🏁' : isGnm ? '↯' : isCat ? '⭐' : '🏆'}</span>
               <span className="stat-value">
                 {isRope
                   ? r.bestCombo || r.rankScore || r.jumpCount || 0
+                  : isSpelling
+                    ? typingWpm
                   : isBalloon
                     ? r.bestCombo || 0
                     : isPlatformer
@@ -210,6 +220,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? '关卡'
                       : isGnm
                         ? '动作连击'
+                      : isSpelling
+                        ? 'WPM'
                       : isCat
                         ? '最高连击'
                         : '完成率'}
@@ -290,9 +302,9 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
 
           <p className="encouragement">
             {isSpelling
-              ? rate >= 80
-                ? '拼写很稳！下一局继续挑战更快完成吧！💫'
-                : '慢一点写清楚，每个字母都会更准～加油！💪'
+              ? typingAccuracy >= 90
+                ? `输入很稳！${typingWpm} WPM 的节奏很漂亮，下一局继续突破吧！💫`
+                : '先保持准确率，再逐步提升输入速度～加油！💪'
               : isRope
                 ? (r.jumpCount || 0) >= 80
                   ? '节奏太稳了！下一轮冲更高榜位吧！💫'

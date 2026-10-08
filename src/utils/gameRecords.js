@@ -139,6 +139,8 @@ export function saveGameRecord(record) {
     completedChallenges: Number(record.completedChallenges || 0),
     completedHerbs: Number(record.completedHerbs || 0),
     catMissions: Number(record.catMissions || 0),
+    typingAccuracy: Number(record.typingAccuracy || 0),
+    typingWpm: Number(record.typingWpm || 0),
     platformerStats: compactPlatformerStats(record.platformerStats),
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),
