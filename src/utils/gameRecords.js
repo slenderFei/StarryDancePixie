@@ -25,6 +25,10 @@ function compactWord(word) {
     balloonLabel: word.balloonLabel || '',
     hitBy: word.hitBy || '',
     source: word.source || '',
+    pinyin: word.pinyin || '',
+    origin: word.origin || '',
+    habit: word.habit || '',
+    property: word.property || '',
   }
 }
 
@@ -133,6 +137,8 @@ export function saveGameRecord(record) {
     damageCount: Number(record.damageCount || 0),
     deathCount: Number(record.deathCount || 0),
     completedChallenges: Number(record.completedChallenges || 0),
+    completedHerbs: Number(record.completedHerbs || 0),
+    catMissions: Number(record.catMissions || 0),
     platformerStats: compactPlatformerStats(record.platformerStats),
     allWords: (record.allWords || []).map(compactWord).filter(Boolean),
     hitWords: (record.hitWords || []).map(compactWord).filter(Boolean),

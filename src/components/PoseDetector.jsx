@@ -65,12 +65,18 @@ function isArcadeMode(gameState, playMode) {
     (playMode === 'balloon' ||
       playMode === 'fruit' ||
       playMode === 'rope' ||
-      playMode === 'platformer')
+      playMode === 'platformer' ||
+      playMode === 'herb' ||
+      playMode === 'catwarrior')
   )
 }
 
 function isGNMMode(gameState, playMode) {
   return gameState === 'arcade_playing' && playMode === 'gnm'
+}
+
+function isCatWarriorMode(gameState, playMode) {
+  return gameState === 'arcade_playing' && playMode === 'catwarrior'
 }
 
 function drawSkeletonMini(ctx, landmarks, width, height) {
@@ -220,6 +226,7 @@ function PoseDetector() {
 
   const arcadeFullscreen = isArcadeMode(gameState, playMode)
   const gnmMode = isGNMMode(gameState, playMode)
+  const catWarriorMode = isCatWarriorMode(gameState, playMode)
 
   const updatePoseStatus = useCallback((message) => {
     if (poseStatusRef.current === message) return
@@ -235,7 +242,7 @@ function PoseDetector() {
       if (arcadeFullscreen || gnmMode) {
         const rawDpr = window.devicePixelRatio || 1
         const dpr = Math.min(rawDpr, 1.85)
-        const rect = gnmMode ? canvas.parentElement?.getBoundingClientRect() : null
+        const rect = (gnmMode || catWarriorMode) ? canvas.parentElement?.getBoundingClientRect() : null
         const w = rect?.width || window.innerWidth
         const h = rect?.height || window.innerHeight
         canvas.width = Math.floor(w * dpr)
@@ -257,7 +264,7 @@ function PoseDetector() {
       return () => window.removeEventListener('resize', applySize)
     }
     return undefined
-  }, [arcadeFullscreen, gnmMode])
+  }, [arcadeFullscreen, catWarriorMode, gnmMode])
 
   /** 街机全屏：轻量 BlazePose，降低发热与卡顿 */
   useEffect(() => {
@@ -391,6 +398,10 @@ function PoseDetector() {
             updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
           } else if (gs.playMode === 'platformer') {
             updatePoseStatus('🏃 星光大冒险：左右倾斜移动，举起双手跳跃')
+          } else if (gs.playMode === 'herb') {
+            updatePoseStatus('🌿 中草药村：按提示动作识别药材')
+          } else if (gs.playMode === 'catwarrior') {
+            updatePoseStatus('🐾 猫武士：完成巡林动作')
           } else if (gs.arcadeVersus) {
             updatePoseStatus('🎈 双人：左侧=P1｜右侧=P2 · 击中高分气球抢分')
           } else {
@@ -707,7 +718,9 @@ function PoseDetector() {
     setPoseVideoIntrinsics,
   ])
 
-  const wrapperClass = arcadeFullscreen
+  const wrapperClass = catWarriorMode
+    ? 'pose-cat-camera'
+    : arcadeFullscreen
     ? 'pose-arcade-fullscreen'
     : gnmMode
       ? 'pose-gnm-camera'

@@ -189,6 +189,55 @@
   bottom: 18px;
 }
 
+/* 猫武士模式：保留右下角实况，玩家可同步修正姿势 */
+.pose-cat-camera {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: clamp(220px, 24vw, 320px);
+  height: clamp(165px, 18vw, 240px);
+  overflow: hidden;
+  z-index: 114;
+  border: 2px solid rgba(240, 215, 125, 0.78);
+  border-radius: 12px;
+  background: #101b2b;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42), 0 0 28px rgba(240, 215, 125, 0.2);
+  pointer-events: none;
+}
+
+.pose-cat-camera::before {
+  content: 'LIVE · 动作镜像';
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  z-index: 10;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 241, 184, 0.45);
+  border-radius: 5px;
+  background: rgba(16, 27, 43, 0.76);
+  color: #fff1b8;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.pose-cat-camera video,
+.pose-cat-camera canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.pose-cat-camera video { z-index: 0; }
+.pose-cat-camera canvas { z-index: 2; pointer-events: none; }
+.pose-cat-camera .camera-status,
+.pose-cat-camera .pose-status { z-index: 12; }
+.pose-cat-camera .camera-status { top: auto; right: 9px; bottom: 9px; left: auto; font-size: 10px; }
+.pose-cat-camera .pose-status { right: 9px; bottom: 30px; left: 9px; max-width: none; font-size: 10px; text-align: center; }
+
 @media (max-width: 760px) {
   .pose-gnm-camera {
     top: 68px;
@@ -198,6 +247,17 @@
     border-right: 0;
     border-bottom: 1px solid rgba(122, 231, 255, 0.24);
   }
+
+  .pose-cat-camera {
+    right: 12px;
+    bottom: 12px;
+    width: 148px;
+    height: 111px;
+    border-radius: 9px;
+  }
+
+  .pose-cat-camera::before { top: 6px; left: 6px; font-size: 8px; }
+  .pose-cat-camera .pose-status { display: none; }
 }
 
 .pose-arcade-fullscreen .camera-status {

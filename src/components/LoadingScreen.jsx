@@ -190,6 +190,26 @@ function LoadingScreen() {
               </div>
             </div>
 
+            <div className="mode-card arcade-versus-slot herb-mode-card ready">
+              <span className="mode-icon">🌿</span>
+              <span className="mode-title">识别中草药村</span>
+              <span className="mode-desc">认识人参、枸杞、菊花等 6 味药材，观察产地习性，用动作或语音完成本草挑战。</span>
+              <div className="versus-actions">
+                <button type="button" className="mode-sub-btn herb-start" onClick={() => startGame({ mode: 'herb' })}>
+                  进入药材村
+                </button>
+              </div>
+            </div>
+
+            <div className="mode-card arcade-versus-slot cat-mode-card ready">
+              <span className="mode-icon">🐾</span>
+              <span className="mode-title">猫武士 · 月影巡林</span>
+              <span className="mode-desc">化身猫武士完成六项巡林任务：潜行、警戒、挥爪、追踪、跃溪与族群集结。</span>
+              <div className="versus-actions">
+                <button type="button" className="mode-sub-btn cat-start" onClick={() => startGame({ mode: 'catwarrior' })}>开始巡林</button>
+              </div>
+            </div>
+
             <div
               className={`mode-card arcade-versus-slot gnm-mode-card ${cameraReady ? 'ready' : ''}`}
               aria-disabled={!cameraReady}

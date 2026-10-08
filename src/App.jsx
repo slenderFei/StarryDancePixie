@@ -17,6 +17,8 @@ const SpellingWordsOverlay = lazy(() => import('./components/SpellingWordsOverla
 const JumpRopeOverlay = lazy(() => import('./components/JumpRopeOverlay'))
 const PlatformerOverlay = lazy(() => import('./components/platformer/PlatformerOverlay'))
 const GNMHeadOverlay = lazy(() => import('./components/GNMHeadOverlay'))
+const HerbVillageOverlay = lazy(() => import('./components/HerbVillageOverlay'))
+const CatWarriorOverlay = lazy(() => import('./components/CatWarriorOverlay'))
 
 function App() {
   const gameState = useGameStore((s) => s.gameState)
@@ -40,7 +42,9 @@ function App() {
       playMode === 'fruit' ||
       playMode === 'rope' ||
       playMode === 'platformer' ||
-      playMode === 'gnm')
+      playMode === 'gnm' ||
+      playMode === 'herb' ||
+      playMode === 'catwarrior')
   const shouldRenderCanvas = isPlaying && !hideCanvasForArcade
   
   // 初始化语音合成（某些浏览器需要）
@@ -134,6 +138,18 @@ function App() {
       {isArcadePlaying && playMode === 'gnm' && (
         <Suspense fallback={null}>
           <GNMHeadOverlay />
+        </Suspense>
+      )}
+
+      {isArcadePlaying && playMode === 'herb' && (
+        <Suspense fallback={null}>
+          <HerbVillageOverlay />
+        </Suspense>
+      )}
+
+      {isArcadePlaying && playMode === 'catwarrior' && (
+        <Suspense fallback={null}>
+          <CatWarriorOverlay />
         </Suspense>
       )}
 

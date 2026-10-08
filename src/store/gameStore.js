@@ -20,6 +20,8 @@ const ARCADE_ROUND_SIZE_BY_MODE = {
   rope: 0,
   platformer: 15,
   gnm: 0,
+  herb: 0,
+  catwarrior: 0,
 }
 
 let latestPose = null
@@ -38,7 +40,7 @@ export function getLatestHands() {
 const useGameStore = create((set, get) => ({
   gameState: 'idle',
 
-  /** classic | balloon | fruit（fruit 为历史内部名，当前界面显示为“单词拼写”） | rope | platformer | gnm */
+  /** classic | balloon | fruit | rope | platformer | gnm | herb | catwarrior */
   playMode: 'classic',
 
   /** 体感街机对战：双人时左手侧计 P1、右手侧计 P2（单人摄像头） */
@@ -86,7 +88,7 @@ const useGameStore = create((set, get) => ({
     const mode = options.mode ?? 'classic'
     const requestedVersus = !!(options.versus ?? options.fruitVersus)
     const arcadeVersus =
-      mode === 'fruit' || mode === 'rope' || mode === 'platformer' || mode === 'gnm'
+      mode === 'fruit' || mode === 'rope' || mode === 'platformer' || mode === 'gnm' || mode === 'herb' || mode === 'catwarrior'
         ? false
         : requestedVersus
 
@@ -154,6 +156,10 @@ const useGameStore = create((set, get) => ({
           ? Number(result.jumpCount || result.rankScore || 0)
           : result.playMode === 'gnm'
             ? Number(result.completedChallenges || 0)
+            : result.playMode === 'herb'
+              ? Number(result.completedHerbs || 0)
+            : result.playMode === 'catwarrior'
+              ? Number(result.catMissions || 0)
             : (result.poppedWords || []).length,
       missedCount: result.missed,
       allWords,
@@ -177,6 +183,8 @@ const useGameStore = create((set, get) => ({
       deathCount: result.deathCount,
       platformerStats: result.platformerStats,
       completedChallenges: result.completedChallenges,
+      completedHerbs: result.completedHerbs,
+      catMissions: result.catMissions,
     })
 
     set({

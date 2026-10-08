@@ -11,6 +11,8 @@ function modeTitle(playMode, arcadeVersus) {
   if (playMode === 'rope') return '🪢 虚拟跳绳'
   if (playMode === 'platformer') return '🏃 星光大冒险 · 横版闯关'
   if (playMode === 'gnm') return '◉ GNM Head · 表情挑战'
+  if (playMode === 'herb') return '🌿 识别中草药村'
+  if (playMode === 'catwarrior') return '🐾 猫武士 · 月影巡林'
   return '星光词汇挑战'
 }
 
@@ -73,6 +75,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
     const isBalloon = r.playMode === 'balloon'
     const isPlatformer = r.playMode === 'platformer'
     const isGnm = r.playMode === 'gnm'
+    const isHerb = r.playMode === 'herb'
+    const isCat = r.playMode === 'catwarrior'
     const ropeLeaderboard = isRope ? getJumpRopeLeaderboard(5) : []
     const balloonScore = Number(r.score || 0)
     const platformerScore = Number(r.score || r.rankScore || 0)
@@ -90,6 +94,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
           <h1 className="completion-title">
             {isRope && r.newRecord
               ? '🏆 新纪录！'
+              : isHerb
+              ? '本草通关！'
+              : isCat
+              ? '巡林完成！'
               : isGnm
               ? r.completed
                 ? '表情同步满分！'
@@ -103,7 +111,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
           <div className="completion-stats arcade-stats-row">
             <div className="stat-item highlight">
               <span className="stat-icon">
-                {isBalloon ? '🎈' : isRope ? '🪢' : isPlatformer ? '🏃' : isGnm ? '◉' : '✍️'}
+                {isBalloon ? '🎈' : isRope ? '🪢' : isPlatformer ? '🏃' : isGnm ? '◉' : isHerb ? '🌿' : isCat ? '🐾' : '✍️'}
               </span>
               <span className="stat-value">
                 {isRope
@@ -114,19 +122,23 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? platformerScore
                       : isGnm
                         ? r.score || 0
+                        : isHerb
+                          ? r.score || 0
+                        : isCat
+                          ? r.score || 0
                         : learned}
               </span>
               <span className="stat-label">
                 {isRope
                   ? '跳绳次数'
-                  : isBalloon || isPlatformer || isGnm
+                  : isBalloon || isPlatformer || isGnm || isHerb || isCat
                     ? '本局得分'
                     : '拼对单词'}
               </span>
             </div>
             <div className="stat-item">
               <span className="stat-icon">
-                {isRope ? '⏱️' : isBalloon ? '⚡' : isPlatformer ? '🪙' : isGnm ? '✓' : '📦'}
+                {isRope ? '⏱️' : isBalloon ? '⚡' : isPlatformer ? '🪙' : isGnm ? '✓' : isHerb ? '📖' : isCat ? '🗺️' : '📦'}
               </span>
               <span className="stat-value">
                 {isRope
@@ -137,6 +149,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? r.coins || 0
                       : isGnm
                         ? r.completedChallenges || 0
+                        : isHerb
+                          ? r.completedHerbs || learned
+                        : isCat
+                          ? r.catMissions || learned
                         : r.sessionTotal}
               </span>
               <span className="stat-label">
@@ -148,6 +164,10 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? '金币'
                       : isGnm
                         ? '完成动作'
+                        : isHerb
+                          ? '认识药材'
+                        : isCat
+                          ? '巡林任务'
                         : '本局总数'}
               </span>
             </div>
@@ -167,7 +187,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               </div>
             )}
             <div className="stat-item">
-              <span className="stat-icon">{isPlatformer ? '🏁' : isGnm ? '↯' : '🏆'}</span>
+              <span className="stat-icon">{isPlatformer ? '🏁' : isGnm ? '↯' : isCat ? '⭐' : '🏆'}</span>
               <span className="stat-value">
                 {isRope
                   ? r.bestCombo || r.rankScore || r.jumpCount || 0
@@ -176,6 +196,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                     : isPlatformer
                       ? platformerLevels
                       : isGnm
+                        ? r.bestCombo || 0
+                      : isCat
                         ? r.bestCombo || 0
                       : `${rate}%`}
               </span>
@@ -188,6 +210,8 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                       ? '关卡'
                       : isGnm
                         ? '动作连击'
+                      : isCat
+                        ? '最高连击'
                         : '完成率'}
               </span>
             </div>
@@ -221,6 +245,13 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
               <strong>{r.completedChallenges || 0}/{r.sessionTotal}</strong>
               <span>个表情成功同步到 GNM Head</span>
             </div>
+          ) : isHerb ? (
+            <div className="gnm-final-summary herb-final-summary">
+              <strong>{r.completedHerbs || learned}/{r.sessionTotal}</strong>
+              <span>味本草知识已收入药材图鉴</span>
+            </div>
+          ) : isCat ? (
+            <div className="gnm-final-summary herb-final-summary"><strong>{r.catMissions || learned}/{r.sessionTotal}</strong><span>项月影巡林任务完成，族群安全</span></div>
           ) : (
             <div className="completion-words">
               <h3>{isSpelling ? '拼对的单词' : isPlatformer ? '学到的单词' : '击破的单词'}</h3>
@@ -270,7 +301,11 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
                   ? r.completed
                     ? '成功闯关！下一次把单词方块和金币都收满吧！💫'
                     : '先稳住移动和跳跃节奏，下一次一定能冲到终点！💪'
-                  : isGnm
+              : isHerb
+                ? '观察药材图和习性，先用动作熟悉，再挑战语音识别。'
+              : isCat
+                ? '巡林节奏很稳！下一次尝试更快完成连击，成为族群精英。'
+              : isGnm
                     ? (r.completedChallenges || 0) >= 5
                       ? '面部控制很稳定，继续挑战全动作连击。'
                       : '保持正对镜头，动作幅度再明显一些会更容易识别。'

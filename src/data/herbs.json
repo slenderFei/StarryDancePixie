@@ -1,0 +1,10 @@
+{
+  "herbs": [
+    {"id":"ginseng","name":"人参","pinyin":"rén shēn","origin":"吉林长白山","habit":"喜阴凉、湿润和疏松土壤，生长缓慢。","property":"补气生津","preparation":"秋季采挖，除去泥土和芦头，洗净后晒干或蒸制成红参。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Panax%20ginseng.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Ginseng%20root.jpg"},
+    {"id":"goji","name":"枸杞","pinyin":"gǒu qǐ","origin":"宁夏中宁","habit":"耐旱喜光，喜欢昼夜温差大的环境。","property":"滋补肝肾","preparation":"秋季果实成熟、颜色鲜红时采摘，摊晾至果皮皱缩后低温干燥，成为枸杞子。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Lycium%20barbarum%20flowers.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Goji%20berries%20dried.jpg"},
+    {"id":"chrysanthemum","name":"菊花","pinyin":"jú huā","origin":"浙江桐乡","habit":"喜阳光，也能耐寒，秋季开花。","property":"清热明目","preparation":"秋季花朵盛开时采收，阴干或低温烘干，去除杂质后作为菊花饮片。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Chrysanthemum%20morifolium.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Dried%20chrysanthemum%20flowers.jpg"},
+    {"id":"licorice","name":"甘草","pinyin":"gān cǎo","origin":"内蒙古鄂尔多斯","habit":"耐旱耐寒，根系发达，常生于沙地。","property":"补脾益气","preparation":"春秋两季采挖根和根茎，洗净切片，晒干；部分饮片再经蜜炙制成炙甘草。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Glycyrrhiza%20glabra%20flowers.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Licorice%20root.jpg"},
+    {"id":"mint","name":"薄荷","pinyin":"bò he","origin":"江苏太仓","habit":"喜温暖湿润，阳光充足时香气更浓。","property":"疏散风热","preparation":"夏秋茎叶茂盛、花穗初开时采割，阴干或切段干燥后入药。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Mentha%20spicata.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Dried%20mint.jpg"},
+    {"id":"honeysuckle","name":"金银花","pinyin":"jīn yín huā","origin":"河南封丘","habit":"适应性强，攀援生长，初开白色后转黄色。","property":"清热解毒","preparation":"夏初花蕾尚未开放时采摘，及时干燥，避免堆积发酵，制成金银花饮片。","image":"https://commons.wikimedia.org/wiki/Special:FilePath/Lonicera%20japonica.jpg","materialImage":"https://commons.wikimedia.org/wiki/Special:FilePath/Dried%20honeysuckle%20flowers.jpg"}
+  ]
+}
