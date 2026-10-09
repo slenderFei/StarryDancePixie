@@ -6,7 +6,7 @@ import BackgroundMusic from './components/BackgroundMusic'
 import LoginScreen from './components/LoginScreen'
 import AdminDashboard from './components/AdminDashboard'
 import useGameStore from './store/gameStore'
-import { getSession, isRootSession } from './utils/auth'
+import { canAccessAdmin, getSession } from './utils/auth'
 import { initSpeechSynthesis } from './utils/soundEffects'
 import './App.css'
 
@@ -26,7 +26,7 @@ function App() {
   const setMousePosition = useGameStore((s) => s.setMousePosition)
   const resetGame = useGameStore((s) => s.resetGame)
   const [session, setSession] = useState(() => getSession())
-  const [view, setView] = useState(() => (isRootSession(getSession()) ? 'admin' : 'game'))
+  const [view, setView] = useState(() => (canAccessAdmin(getSession()) ? 'admin' : 'game'))
   const mouseFrameRef = useRef(null)
   const mousePointRef = useRef({ x: 0, y: 0 })
 
@@ -54,14 +54,14 @@ function App() {
 
   const handleLogin = (nextSession) => {
     setSession(nextSession)
-    setView(isRootSession(nextSession) ? 'admin' : 'game')
+    setView(canAccessAdmin(nextSession) ? 'admin' : 'game')
   }
 
   const handleSessionChange = () => {
     resetGame()
     const nextSession = getSession()
     setSession(nextSession)
-    setView(isRootSession(nextSession) ? 'admin' : 'game')
+    setView(canAccessAdmin(nextSession) ? 'admin' : 'game')
   }
   
   // 追踪鼠标位置
@@ -93,7 +93,13 @@ function App() {
   }
 
   if (view === 'admin') {
-    return <AdminDashboard onExit={() => setView('game')} onSessionChange={handleSessionChange} />
+    return (
+      <AdminDashboard
+        session={session}
+        onExit={() => setView('game')}
+        onSessionChange={handleSessionChange}
+      />
+    )
   }
 
   return (
@@ -106,9 +112,11 @@ function App() {
       )}
       
       {/* MediaPipe 摄像头与骨架 */}
-      <Suspense fallback={null}>
-        <PoseDetector />
-      </Suspense>
+      {playMode !== 'fruit' && (
+        <Suspense fallback={null}>
+          <PoseDetector />
+        </Suspense>
+      )}
 
       {/* 街机图层：盖住全屏实况，夹在摄像头层与顶部 GameUI 之间 */}
       {isArcadePlaying && playMode === 'balloon' && (
@@ -119,7 +127,7 @@ function App() {
 
       {isArcadePlaying && playMode === 'fruit' && (
         <Suspense fallback={null}>
-          <SpellingWordsOverlay />
+          <SpellingWordsOverlay onSessionChange={handleSessionChange} />
         </Suspense>
       )}
 
@@ -154,11 +162,13 @@ function App() {
       )}
 
       {/* 游戏 UI */}
-      <GameUI
-        session={session}
-        onOpenAdmin={() => setView('admin')}
-        onSessionChange={handleSessionChange}
-      />
+      {playMode !== 'fruit' && (
+        <GameUI
+          session={session}
+          onOpenAdmin={() => setView('admin')}
+          onSessionChange={handleSessionChange}
+        />
+      )}
       
       {/* 单词面板 - 右侧 */}
       {isClassicPlaying && <WordPanel />}
@@ -171,7 +181,7 @@ function App() {
       )}
       
       {/* 背景音乐播放器 */}
-      {isPlaying && playMode !== 'gnm' && <BackgroundMusic />}
+      {isPlaying && playMode !== 'gnm' && playMode !== 'fruit' && <BackgroundMusic />}
       
       {/* 加载屏幕 */}
       {gameState === 'idle' && <LoadingScreen />}

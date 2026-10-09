@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react'
 import useGameStore from '../store/gameStore'
-import { isRootSession, logout } from '../utils/auth'
+import { canAccessAdmin, logout } from '../utils/auth'
 import { getJumpRopeLeaderboard } from '../utils/gameRecords'
 import './GameUI.css'
 
 function modeTitle(playMode, arcadeVersus) {
   if (playMode === 'balloon')
     return arcadeVersus ? '🎈 气球跳跳碰 · 双人' : '🎈 气球跳跳碰 · 单机'
-  if (playMode === 'fruit') return '✍️ 单词拼写'
+  if (playMode === 'fruit') return '⌨️ Type Words · 单词练习'
   if (playMode === 'rope') return '🪢 虚拟跳绳'
   if (playMode === 'platformer') return '🏃 星光大冒险 · 横版闯关'
   if (playMode === 'gnm') return '◉ GNM Head · 表情挑战'
@@ -54,7 +54,7 @@ function GameUI({ session, onOpenAdmin, onSessionChange }) {
   const accountActions = (
     <div className="account-actions">
       <span>{session?.username}</span>
-      {isRootSession(session) && (
+      {canAccessAdmin(session) && (
         <button type="button" onClick={onOpenAdmin}>
           后台
         </button>

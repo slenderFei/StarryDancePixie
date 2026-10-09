@@ -78,10 +78,6 @@ function isCatWarriorMode(gameState, playMode) {
   return gameState === 'arcade_playing' && playMode === 'catwarrior'
 }
 
-function isTypingMode(gameState, playMode) {
-  return gameState === 'arcade_playing' && playMode === 'fruit'
-}
-
 function drawSkeletonMini(ctx, landmarks, width, height) {
   ctx.lineWidth = 3
   ctx.lineCap = 'round'
@@ -230,7 +226,6 @@ function PoseDetector() {
   const arcadeFullscreen = isArcadeMode(gameState, playMode)
   const gnmMode = isGNMMode(gameState, playMode)
   const catWarriorMode = isCatWarriorMode(gameState, playMode)
-  const typingMode = isTypingMode(gameState, playMode)
 
   const updatePoseStatus = useCallback((message) => {
     if (poseStatusRef.current === message) return
@@ -396,9 +391,7 @@ function PoseDetector() {
         }
 
         if (gs.gameState === 'arcade_playing') {
-          if (gs.playMode === 'fruit') {
-            updatePoseStatus('⌨️ 键盘输入模式：输入目标单词')
-          } else if (gs.playMode === 'rope') {
+          if (gs.playMode === 'rope') {
             updatePoseStatus('🪢 虚拟跳绳：全身入镜，双脚跳起落下计数')
           } else if (gs.playMode === 'platformer') {
             updatePoseStatus('🏃 星光大冒险：左右倾斜移动，举起双手跳跃')
@@ -721,9 +714,7 @@ function PoseDetector() {
     setPoseVideoIntrinsics,
   ])
 
-  const wrapperClass = typingMode
-    ? 'pose-keyboard-hidden'
-    : catWarriorMode
+  const wrapperClass = catWarriorMode
     ? 'pose-cat-camera'
     : arcadeFullscreen
     ? 'pose-arcade-fullscreen'

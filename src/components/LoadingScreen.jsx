@@ -133,15 +133,15 @@ function LoadingScreen() {
 
             <div className="mode-card arcade-versus-slot ready">
               <span className="mode-icon">✍️</span>
-              <span className="mode-title">单词键盘练习</span>
-              <span className="mode-desc">参考 Type Words 的键盘跟打体验，看中文释义输入英文单词，实时查看 WPM、准确率与连击。一局随机 5 词。</span>
+              <span className="mode-title">Type Words · 单词练习</span>
+              <span className="mode-desc">直接打开 Type Words 的单词练习页面，在项目内完成键盘跟打训练。</span>
               <div className="versus-actions">
                 <button
                   type="button"
                   className="mode-sub-btn spelling-start"
                   onClick={() => startGame({ mode: 'fruit', versus: false })}
                 >
-                  开始练习
+                  进入 Type Words
                 </button>
               </div>
             </div>

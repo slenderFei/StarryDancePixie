@@ -41,15 +41,6 @@
   backdrop-filter: blur(14px);
 }
 
-.pose-keyboard-hidden {
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* 真人 vs 卡通 对比标签 */
 .pose-detector-container::before {
   content: 'LIVE CAMERA';

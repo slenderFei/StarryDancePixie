@@ -78,6 +78,29 @@
   border-color: rgba(45, 212, 255, 0.42);
 }
 
+.auth-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 14px;
+}
+
+.auth-mode-tabs button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.62);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-mode-tabs button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fbff;
+}
+
 .login-form {
   display: grid;
   gap: 14px;
@@ -130,22 +153,42 @@
   text-align: center;
 }
 
-.qr-box {
-  width: 180px;
-  height: 180px;
-  padding: 14px;
+.wechat-qr-container {
+  width: 200px;
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
   border-radius: 8px;
   background: #f8fbff;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
 }
 
-.qr-grid {
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(90deg, #111827 10px, transparent 10px) 0 0 / 26px 26px,
-    linear-gradient(#111827 10px, transparent 10px) 0 0 / 26px 26px,
-    linear-gradient(135deg, transparent 42%, #111827 42% 58%, transparent 58%);
+.wechat-qr-container iframe {
+  display: block;
+  width: 200px;
+  height: 250px;
+  border: 0;
+}
+
+.qr-unconfigured {
+  width: 200px;
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed rgba(45, 212, 255, 0.42);
+  border-radius: 8px;
+  background: rgba(45, 212, 255, 0.08);
+  color: #e0fbff;
+  text-align: center;
+}
+
+.qr-unconfigured small {
+  color: rgba(226, 232, 240, 0.62);
+  line-height: 1.5;
 }
 
 .login-hints {

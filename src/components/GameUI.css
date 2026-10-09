@@ -21,6 +21,8 @@
 .account-only {
   top: max(16px, env(safe-area-inset-top));
   right: max(22px, env(safe-area-inset-right));
+  z-index: 220;
+  pointer-events: auto;
 }
 
 .account-actions {
