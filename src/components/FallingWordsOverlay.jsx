@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react'
 import useGameStore, { getLatestPose } from '../store/gameStore'
 import { lmToViewportCoverMirror } from '../utils/cameraLandmarks'
+import { getBalloonGeometry, isBalloonHit } from '../utils/balloonGeometry'
 import { playSuccessTone, playWordPronunciation } from '../utils/soundEffects'
 import './FallingWordsOverlay.css'
 
@@ -38,7 +39,6 @@ const BALLOON_TYPES = [
     weight: 40,
     speedScale: 0.95,
     sizeScale: 1.05,
-    hitScale: 1.06,
   },
   {
     id: 'aqua',
@@ -49,7 +49,6 @@ const BALLOON_TYPES = [
     weight: 32,
     speedScale: 1,
     sizeScale: 1,
-    hitScale: 1,
   },
   {
     id: 'violet',
@@ -60,7 +59,6 @@ const BALLOON_TYPES = [
     weight: 18,
     speedScale: 1.08,
     sizeScale: 0.98,
-    hitScale: 0.96,
   },
   {
     id: 'gold',
@@ -71,7 +69,6 @@ const BALLOON_TYPES = [
     weight: 10,
     speedScale: 1.16,
     sizeScale: 0.93,
-    hitScale: 0.9,
   },
 ]
 
@@ -126,9 +123,7 @@ function lmToHitPx(lm, vw, vh, useBalloonCover, iw, ih) {
 
 function nearestHitPlayer(
   landmarks,
-  cx,
-  cy,
-  hitR2,
+  balloon,
   arcadeVersus,
   vw,
   vh,
@@ -144,8 +139,8 @@ function nearestHitPlayer(
       const p = landmarks[i]
       if (!p || (p.visibility != null && p.visibility < VIS_MIN)) continue
       const { x, y } = toPx(p)
-      const d2 = (x - cx) ** 2 + (y - cy) ** 2
-      if (d2 <= hitR2) return 'hit'
+      if (x < 0 || x > vw || y < 0 || y > vh) continue
+      if (isBalloonHit({ x, y }, balloon)) return 'hit'
     }
     return ''
   }
@@ -155,8 +150,9 @@ function nearestHitPlayer(
     const p = landmarks[idx]
     if (!p || (p.visibility != null && p.visibility < VIS_MIN)) continue
     const { x, y } = toPx(p)
-    const d2 = (x - cx) ** 2 + (y - cy) ** 2
-    if (d2 > hitR2) continue
+    if (x < 0 || x > vw || y < 0 || y > vh) continue
+    if (!isBalloonHit({ x, y }, balloon)) continue
+    const d2 = (x - balloon.cx) ** 2 + (y - balloon.cy) ** 2
     if (!best || d2 < best.d2) best = { x, d2 }
   }
   return best ? (best.x < vw / 2 ? 'p1' : 'p2') : ''
@@ -178,6 +174,9 @@ function FallingWordsOverlay() {
   const hitClockRef = useRef({ hit: -Infinity, p1: -Infinity, p2: -Infinity })
   const lastSpeechAtRef = useRef(-Infinity)
   const popTimeoutsRef = useRef(new Set())
+  const feedbackTimeoutsRef = useRef(new Set())
+  const [hitFeedback, setHitFeedback] = useState([])
+  const [trackingPaused, setTrackingPaused] = useState(false)
   const [renderItems, setRenderItems] = useState([])
   const [hudStats, setHudStats] = useState({
     popped: 0,
@@ -212,6 +211,8 @@ function FallingWordsOverlay() {
   const clearPopTimeouts = useCallback(() => {
     popTimeoutsRef.current.forEach((timerId) => clearTimeout(timerId))
     popTimeoutsRef.current.clear()
+    feedbackTimeoutsRef.current.forEach((timerId) => clearTimeout(timerId))
+    feedbackTimeoutsRef.current.clear()
   }, [])
 
   const commitItems = useCallback(() => {
@@ -257,6 +258,8 @@ function FallingWordsOverlay() {
       spawnedList: [],
     }
     setRenderItems([])
+    setHitFeedback([])
+    setTrackingPaused(false)
     setHudStats({
       popped: 0,
       missed: 0,
@@ -349,13 +352,10 @@ function FallingWordsOverlay() {
     (it, vw) => {
       const el = itemElsRef.current.get(it.id)
       if (!el) return
-      const halfW = isBalloon ? 59 : 60
-      const scale = isBalloon ? it.sizeScale ?? 1 : 1
-      const x = it.xFrac * vw + (it.swayPx ?? 0) - halfW * scale
-      const y = it.y
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${it.wobbleDeg ?? 0}deg) scale(${scale})`
+      const { cx, cy, width, height, scale } = getBalloonGeometry(it, vw)
+      el.style.transform = `translate3d(${cx - width / 2}px, ${cy - height / 2}px, 0) rotate(${it.wobbleDeg ?? 0}deg) scale(${scale})`
     },
-    [isBalloon],
+    [],
   )
 
   useEffect(() => {
@@ -364,10 +364,28 @@ function FallingWordsOverlay() {
     let raf = null
     let last = performance.now()
     let lastHudCommit = 0
+    let wasPaused = false
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        wasPaused = true
+        setTrackingPaused(true)
+      }
+    }
+    const onResize = () => {
+      for (const it of itemsRef.current) {
+        const el = itemElsRef.current.get(it.id)
+        if (!el) continue
+        it.width = el.offsetWidth
+        it.height = el.offsetHeight
+        applyItemTransform(it, innerWidth || 390)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('resize', onResize)
 
     const step = () => {
       const now = performance.now()
-      const dt = Math.min(now - last, 48)
+      let dt = Math.min(now - last, 48)
       last = now
 
       const gs = useGameStore.getState()
@@ -376,13 +394,30 @@ function FallingWordsOverlay() {
       const iw = gs.poseVideoIntrinsics?.width ?? 0
       const ih = gs.poseVideoIntrinsics?.height ?? 0
 
+      const hasTracking = [...LEFT_BODY, ...RIGHT_BODY, POSE_LM.NOSE].some((index) => {
+        const point = landmarks?.[index]
+        return point && (point.visibility == null || point.visibility >= VIS_MIN)
+      })
+      const paused = document.hidden || !hasTracking
+      if (paused) {
+        if (!wasPaused) setTrackingPaused(true)
+        wasPaused = true
+        raf = requestAnimationFrame(step)
+        return
+      }
+      if (wasPaused) {
+        nextSpawnAtRef.current = now + 500
+        hitClockRef.current = { hit: now, p1: now, p2: now }
+        setTrackingPaused(false)
+        wasPaused = false
+        dt = 0
+      }
+
       trySpawn(now)
 
       const vw = innerWidth || 390
       const vh = innerHeight || 820
       const minVH = Math.min(vw, vh)
-      const cxOffset = isBalloon ? 59 : 60
-      const cyOffset = isBalloon ? 70 : 59
 
       const beforePrune = itemsRef.current.length
       itemsRef.current = itemsRef.current.filter((it) => !it.done)
@@ -399,18 +434,13 @@ function FallingWordsOverlay() {
         const sway = Math.sin(now * 0.00115 + it.phase) * minVH * swayAmp
         it.swayPx = sway
         it.wobbleDeg = Math.sin(now * 0.0018 + it.phase * 1.3) * (isBalloon ? 5.5 : 2)
-        const cx = it.xFrac * vw + sway + cxOffset
-        const cy = it.y + cyOffset
-        const hitR = minVH * 0.1 * (it.balloonType?.hitScale ?? 1)
-        const hitR2 = hitR * hitR
+        const balloon = getBalloonGeometry(it, vw)
         applyItemTransform(it, vw)
 
         if (landmarks && landmarks.length && !it.popping) {
           const who = nearestHitPlayer(
             landmarks,
-            cx,
-            cy,
-            hitR2,
+            balloon,
             gs.arcadeVersus,
             vw,
             vh,
@@ -446,6 +476,19 @@ function FallingWordsOverlay() {
               lastSpeechAtRef.current = now
               playWordPronunciation(w.word)
             }
+            const feedback = {
+              id: `${it.id}-${Math.round(now)}`,
+              x: balloon.cx,
+              y: balloon.cy,
+              points,
+              combo: statsRef.current.combo,
+            }
+            setHitFeedback((current) => [...current, feedback].slice(-8))
+            const feedbackTimer = setTimeout(() => {
+              feedbackTimeoutsRef.current.delete(feedbackTimer)
+              setHitFeedback((current) => current.filter((item) => item.id !== feedback.id))
+            }, 680)
+            feedbackTimeoutsRef.current.add(feedbackTimer)
             commitHudStats()
 
             const el = itemElsRef.current.get(it.id)
@@ -455,7 +498,7 @@ function FallingWordsOverlay() {
               popTimeoutsRef.current.delete(popTimer)
               it.done = true
               commitItems()
-            }, 300)
+            }, 340)
             popTimeoutsRef.current.add(popTimer)
           }
         }
@@ -488,6 +531,8 @@ function FallingWordsOverlay() {
     raf = requestAnimationFrame(step)
     return () => {
       cancelAnimationFrame(raf)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('resize', onResize)
       clearPopTimeouts()
     }
   }, [
@@ -533,7 +578,7 @@ function FallingWordsOverlay() {
   }
 
   return (
-    <div className="falling-words-overlay" aria-hidden="true">
+    <div className="falling-words-overlay">
       <div className="falling-hud">
         <div className="falling-hud-title">
           {arcadeVersus ? '气球跳跳碰 · 双人' : '气球跳跳碰 · 单机'}
@@ -550,13 +595,31 @@ function FallingWordsOverlay() {
         </div>
       </div>
 
+      {trackingPaused && (
+        <div className="balloon-tracking-paused" role="status">
+          <strong>等待入镜</strong>
+          <span>让手臂进入画面，气球会继续飘落</span>
+        </div>
+      )}
+
+      {hitFeedback.map((feedback) => (
+        <div
+          key={feedback.id}
+          className="balloon-hit-feedback"
+          style={{ left: feedback.x, top: feedback.y }}
+          aria-hidden="true"
+        >
+          <i className="balloon-hit-ring" />
+          <strong>+{feedback.points}</strong>
+          {feedback.combo > 1 && <span>{feedback.combo} 连击</span>}
+        </div>
+      ))}
+
       {itemsRender.map((it) => {
         const balloonClasses = isBalloon
           ? ['balloon-shape', it.balloonType?.className ?? 'balloon-type-pearl'].join(' ')
           : 'fruit-shape'
         const scale = isBalloon ? it.sizeScale ?? 1 : 1
-        const halfW = isBalloon ? 59 : 60
-        const halfScaled = halfW * scale
 
         return (
           <div
@@ -565,16 +628,15 @@ function FallingWordsOverlay() {
             ref={(node) => {
               if (node) {
                 itemElsRef.current.set(it.id, node)
-                requestAnimationFrame(() => {
-                  applyItemTransform(it, window.innerWidth || 390)
-                })
+                it.width = node.offsetWidth
+                it.height = node.offsetHeight
+                applyItemTransform(it, window.innerWidth || 390)
               } else {
                 itemElsRef.current.delete(it.id)
               }
             }}
             style={{
               '--balloon-scale': scale,
-              transform: `translate3d(${-halfScaled}px, ${it.y}px, 0) scale(${scale})`,
             }}
           >
             {isBalloon && <span className="balloon-shine" aria-hidden="true" />}

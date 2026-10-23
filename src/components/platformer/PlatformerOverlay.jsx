@@ -1,18 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import useGameStore, { getLatestPose } from '../../store/gameStore'
 import { playSuccessTone, playWordPronunciation } from '../../utils/soundEffects'
+import { getPlatformerPoseSnapshot } from '../../utils/platformerPose'
 import './PlatformerOverlay.css'
-
-const POSE_LM = {
-  LEFT_SHOULDER: 11,
-  RIGHT_SHOULDER: 12,
-  LEFT_WRIST: 15,
-  RIGHT_WRIST: 16,
-  LEFT_HIP: 23,
-  RIGHT_HIP: 24,
-  LEFT_ANKLE: 27,
-  RIGHT_ANKLE: 28,
-}
 
 const WORDS_PER_LEVEL = 5
 const ROUND_SECONDS = 240
@@ -206,17 +196,6 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)]
 }
 
-function visible(point, min = 0.44) {
-  return point && (point.visibility == null || point.visibility >= min)
-}
-
-function mid(a, b) {
-  if (!a && !b) return null
-  if (!a) return b
-  if (!b) return a
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-}
-
 function intersects(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
@@ -225,49 +204,6 @@ function circleHitRect(cx, cy, radius, rect) {
   const nx = clamp(cx, rect.x, rect.x + rect.w)
   const ny = clamp(cy, rect.y, rect.y + rect.h)
   return (cx - nx) ** 2 + (cy - ny) ** 2 <= radius ** 2
-}
-
-function poseSnapshot(pose) {
-  const leftShoulder = pose?.[POSE_LM.LEFT_SHOULDER]
-  const rightShoulder = pose?.[POSE_LM.RIGHT_SHOULDER]
-  const leftHip = pose?.[POSE_LM.LEFT_HIP]
-  const rightHip = pose?.[POSE_LM.RIGHT_HIP]
-  const leftAnkle = pose?.[POSE_LM.LEFT_ANKLE]
-  const rightAnkle = pose?.[POSE_LM.RIGHT_ANKLE]
-  const leftWrist = pose?.[POSE_LM.LEFT_WRIST]
-  const rightWrist = pose?.[POSE_LM.RIGHT_WRIST]
-  const shoulder = mid(visible(leftShoulder) ? leftShoulder : null, visible(rightShoulder) ? rightShoulder : null)
-  const hip = mid(visible(leftHip) ? leftHip : null, visible(rightHip) ? rightHip : null)
-  const foot = mid(visible(leftAnkle) ? leftAnkle : null, visible(rightAnkle) ? rightAnkle : null)
-  const visibleCount = [
-    leftShoulder,
-    rightShoulder,
-    leftHip,
-    rightHip,
-    leftAnkle,
-    rightAnkle,
-  ].filter((point) => visible(point)).length
-
-  if (!shoulder || !hip || !foot || visibleCount < 4) {
-    return { ok: false, visibleCount, quality: Math.round((visibleCount / 6) * 100) }
-  }
-
-  const handsUp =
-    visible(leftWrist) &&
-    visible(rightWrist) &&
-    leftWrist.y < shoulder.y - 0.035 &&
-    rightWrist.y < shoulder.y - 0.035
-
-  return {
-    ok: true,
-    quality: Math.round((visibleCount / 6) * 100),
-    centerX: 1 - hip.x,
-    hipY: hip.y,
-    shoulderY: shoulder.y,
-    footY: foot.y,
-    bodyHeight: Math.max(0.22, foot.y - shoulder.y),
-    handsUp,
-  }
 }
 
 function roundedRect(ctx, x, y, w, h, r) {
@@ -289,6 +225,19 @@ function wordIndexForBox(levelIndex, boxIndex) {
   return levelIndex * WORDS_PER_LEVEL + boxIndex
 }
 
+function addPlatformerFeedback(state, x, y, text, color = '#fef08a') {
+  if (!state) return
+  state.feedback = state.feedback || []
+  state.feedback.push({
+    x,
+    y,
+    text,
+    color,
+    createdAt: performance.now(),
+  })
+  if (state.feedback.length > 8) state.feedback.shift()
+}
+
 function startCountdown(s, now, status = '准备') {
   s.phase = 'countdown'
   s.countdownStartedAt = now
@@ -303,6 +252,9 @@ function enterLevel(s, levelIndex, now, status) {
   s.player.vx = 0
   s.player.vy = 0
   s.player.grounded = false
+  s.player.landedAt = -Infinity
+  s.landing = null
+  s.feedback = []
   s.checkpoint = { ...level.spawn }
   s.enemies = level.enemies.map((enemy) => ({ ...enemy, dir: 1 }))
   s.poseJumpActive = false
@@ -342,7 +294,7 @@ function drawStar(ctx, x, y, outer, inner, points = 5) {
 
 function drawCalibrationGuide(ctx, vw, vh, pose, progress) {
   const frameW = Math.min(vw * 0.72, 560)
-  const frameH = Math.min(vh * 0.54, 520)
+  const frameH = Math.min(vh * 0.42, 390)
   const x = (vw - frameW) / 2
   const y = Math.max(118, Math.min(vh - frameH - 112, (vh - frameH) / 2 + 22))
   const ready = pose.ok && progress > 0.1
@@ -377,8 +329,8 @@ function drawCalibrationGuide(ctx, vw, vh, pose, progress) {
   ctx.strokeStyle = 'rgba(254, 240, 138, 0.72)'
   ctx.lineWidth = 3
   ctx.beginPath()
-  ctx.moveTo(x + frameW * 0.18, y + frameH * 0.82)
-  ctx.lineTo(x + frameW * 0.82, y + frameH * 0.82)
+  ctx.moveTo(x + frameW * 0.18, y + frameH * 0.76)
+  ctx.lineTo(x + frameW * 0.82, y + frameH * 0.76)
   ctx.stroke()
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
@@ -389,19 +341,18 @@ function drawCalibrationGuide(ctx, vw, vh, pose, progress) {
   ctx.lineWidth = 5
   ctx.beginPath()
   ctx.moveTo(centerX, y + frameH * 0.28)
-  ctx.lineTo(centerX, y + frameH * 0.58)
+  ctx.lineTo(centerX, y + frameH * 0.66)
   ctx.moveTo(x + frameW * 0.31, y + frameH * 0.36)
   ctx.lineTo(x + frameW * 0.69, y + frameH * 0.36)
-  ctx.moveTo(centerX, y + frameH * 0.58)
-  ctx.lineTo(x + frameW * 0.36, y + frameH * 0.78)
-  ctx.moveTo(centerX, y + frameH * 0.58)
-  ctx.lineTo(x + frameW * 0.64, y + frameH * 0.78)
+  ctx.moveTo(centerX, y + frameH * 0.66)
+  ctx.lineTo(x + frameW * 0.36, y + frameH * 0.72)
+  ctx.moveTo(centerX, y + frameH * 0.66)
+  ctx.lineTo(x + frameW * 0.64, y + frameH * 0.72)
   ctx.stroke()
 
   ctx.fillStyle = 'rgba(254, 240, 138, 0.24)'
   ctx.beginPath()
-  ctx.ellipse(x + frameW * 0.38, y + frameH * 0.84, frameW * 0.11, 10, 0, 0, Math.PI * 2)
-  ctx.ellipse(x + frameW * 0.62, y + frameH * 0.84, frameW * 0.11, 10, 0, 0, Math.PI * 2)
+  ctx.ellipse(x + frameW * 0.5, y + frameH * 0.74, frameW * 0.18, 8, 0, 0, Math.PI * 2)
   ctx.fill()
 
   if (pose.ok) {
@@ -439,6 +390,7 @@ function PlatformerOverlay() {
   const rafRef = useRef(null)
   const stateRef = useRef(null)
   const keysRef = useRef(new Set())
+  const reducedMotionRef = useRef(false)
   const [ui, setUi] = useState({
     phase: 'calibrating',
     status: '站稳校准',
@@ -458,6 +410,7 @@ function PlatformerOverlay() {
     challenge: null,
     levelProgress: 0,
     inputMode: 'pose',
+    paused: false,
   })
 
   const resizeCanvas = useCallback(() => {
@@ -489,7 +442,7 @@ function PlatformerOverlay() {
       learned: s.learnedWords.length,
       totalWords: s.words.length,
       secondsLeft: s.startedAt
-        ? Math.max(0, Math.ceil(ROUND_SECONDS - (performance.now() - s.startedAt) / 1000))
+        ? Math.max(0, Math.ceil(ROUND_SECONDS - ((s.pausedAt || performance.now()) - s.startedAt) / 1000))
         : ROUND_SECONDS,
       quality: s.quality,
       visibleCount: s.visibleCount || 0,
@@ -497,12 +450,42 @@ function PlatformerOverlay() {
       challenge: s.challenge,
       levelProgress: clamp(s.player.x / level.finishX, 0, 1),
       inputMode: s.inputMode,
+      paused: !!s.pausedAt,
     })
   }, [])
 
+  const setPaused = useCallback((paused) => {
+    const s = stateRef.current
+    if (!s || s.finished) return
+    keysRef.current.clear()
+    s.jumpBufferedAt = -Infinity
+    s.lastGroundedAt = -Infinity
+    if (s.phase === 'calibrating') {
+      s.calibrationSamples = []
+      return
+    }
+    const now = performance.now()
+    if (paused && !s.pausedAt) {
+      s.pausedAt = now
+    } else if (!paused && s.pausedAt) {
+      const duration = now - s.pausedAt
+      if (s.startedAt) s.startedAt += duration
+      if (s.phase === 'countdown') s.countdownStartedAt += duration
+      s.player.invincibleUntil += duration
+      s.player.landedAt += duration
+      if (s.landing) s.landing.at += duration
+      s.feedback.forEach((item) => { item.createdAt += duration })
+      s.lastJumpAt = now
+      s.poseJumpActive = true
+      s.keyJumpActive = false
+      s.pausedAt = 0
+    }
+    publish()
+  }, [publish])
+
   const completeChallenge = useCallback((source = 'gesture') => {
     const s = stateRef.current
-    if (!s?.challenge) return
+    if (!s?.challenge || s.pausedAt) return
     const { boxId, word } = s.challenge
     if (!s.openedBoxIds.has(boxId)) {
       s.openedBoxIds.add(boxId)
@@ -532,6 +515,7 @@ function PlatformerOverlay() {
     s.player.vy = Math.max(s.player.vy, 5.4)
     s.player.grounded = false
     s.status = '小心障碍'
+    addPlatformerFeedback(s, s.player.x + s.player.w / 2, s.player.y + s.player.h + 0.2, '小心障碍', '#fda4af')
     playSuccessTone(1)
 
     if (s.player.health <= 0) {
@@ -542,6 +526,7 @@ function PlatformerOverlay() {
   }, [])
 
   const setTouchControl = useCallback((control, active) => {
+    if (active && stateRef.current?.pausedAt) return
     const key = `touch-${control}`
     if (active) keysRef.current.add(key)
     else keysRef.current.delete(key)
@@ -615,12 +600,21 @@ function PlatformerOverlay() {
     const ctx = canvas?.getContext('2d')
     const s = stateRef.current
     if (!canvas || !ctx || !s) return
+    const now = performance.now()
+    const reducedMotion = reducedMotionRef.current
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const vw = canvas.clientWidth || window.innerWidth || 390
     const vh = canvas.clientHeight || window.innerHeight || 820
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, vw, vh)
+
+    // Keep the camera visible while calibrating so players can correct their
+    // position without needing to guess from the silhouette alone.
+    if (s.phase === 'calibrating') {
+      drawCalibrationGuide(ctx, vw, vh, s.poseSnapshot || { ok: false }, s.calibrationProgress || 0)
+      return
+    }
 
     const level = currentLevel(s)
     const palette = level.palette
@@ -687,11 +681,6 @@ function PlatformerOverlay() {
     ctx.lineTo(vw, vh)
     ctx.lineTo(0, vh)
     ctx.fill()
-
-    if (s.phase === 'calibrating') {
-      drawCalibrationGuide(ctx, vw, vh, s.poseSnapshot || { ok: false }, s.calibrationProgress || 0)
-      return
-    }
 
     if (s.levelIndex === 1) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
@@ -824,12 +813,33 @@ function PlatformerOverlay() {
     const py = wy(p.y + p.h)
     const pw = p.w * scale
     const ph = p.h * scale
-    const blinking = p.invincibleUntil > performance.now() && Math.floor(performance.now() / 90) % 2 === 0
+    const blinking = p.invincibleUntil > now && Math.floor(now / 90) % 2 === 0
     ctx.fillStyle = 'rgba(15, 23, 42, 0.24)'
     ctx.beginPath()
     ctx.ellipse(px + pw * 0.5, wy(p.y), pw * 0.78, Math.max(4, scale * 0.08), 0, 0, Math.PI * 2)
     ctx.fill()
+    if (!reducedMotion && s.landing) {
+      const age = (now - s.landing.at) / 360
+      if (age >= 0 && age < 1) {
+        ctx.save()
+        ctx.globalAlpha = (1 - age) * 0.65
+        ctx.strokeStyle = '#cffafe'
+        ctx.lineWidth = 3 * (1 - age) + 1
+        ctx.beginPath()
+        ctx.ellipse(wx(s.landing.x), wy(s.landing.y), pw * (0.6 + age * 1.4), Math.max(3, scale * 0.06) * (1 + age), 0, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
     if (!blinking) {
+      const landingAge = (now - p.landedAt) / 240
+      const squash = !reducedMotion && p.grounded && landingAge >= 0 && landingAge < 1
+        ? Math.sin(landingAge * Math.PI) * (1 - landingAge) * 0.22 : 0
+      const stretch = !reducedMotion && !p.grounded ? Math.min(0.1, Math.abs(p.vy) / 150) : 0
+      ctx.save()
+      ctx.translate(px + pw / 2, wy(p.y))
+      ctx.scale(1 + squash - stretch / 2, 1 - squash + stretch)
+      ctx.translate(-px - pw / 2, -wy(p.y))
       ctx.fillStyle = 'rgba(236, 72, 153, 0.72)'
       ctx.beginPath()
       ctx.moveTo(px + pw * 0.22, py + ph * 0.34)
@@ -866,7 +876,20 @@ function PlatformerOverlay() {
       ctx.fill()
       roundedRect(ctx, px + pw * 0.6, py + ph * 0.88, pw * 0.28, ph * 0.1, 4)
       ctx.fill()
+      ctx.restore()
     }
+
+    s.feedback = (s.feedback || []).filter((item) => now - item.createdAt < 900)
+    s.feedback.forEach((item) => {
+      const age = Math.max(0, Math.min(1, (now - item.createdAt) / 900))
+      ctx.globalAlpha = 1 - age
+      ctx.fillStyle = item.color
+      ctx.font = `950 ${Math.max(14, scale * 0.22)}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.fillText(item.text, wx(item.x), wy(item.y + (reducedMotion ? 0 : age * 0.72)))
+    })
+    ctx.globalAlpha = 1
+    ctx.textAlign = 'start'
   }, [])
 
   useEffect(() => {
@@ -878,6 +901,7 @@ function PlatformerOverlay() {
       countdown: 3,
       countdownStartedAt: 0,
       startedAt: 0,
+      pausedAt: 0,
       finished: false,
       reported: false,
       completed: false,
@@ -902,6 +926,7 @@ function PlatformerOverlay() {
         grounded: false,
         health: 3,
         invincibleUntil: 0,
+        landedAt: -Infinity,
       },
       checkpoint: { ...firstLevel.spawn },
       enemies: firstLevel.enemies.map((enemy) => ({ ...enemy, dir: 1 })),
@@ -920,23 +945,48 @@ function PlatformerOverlay() {
       lastGroundedAt: -Infinity,
       jumpBufferedAt: -Infinity,
       lastPublishAt: 0,
+      feedback: [],
+      landing: null,
     }
+    keysRef.current.clear()
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updateMotion = () => { reducedMotionRef.current = motionQuery.matches }
+    updateMotion()
+    motionQuery.addEventListener('change', updateMotion)
     resizeCanvas()
     publish()
     window.addEventListener('resize', resizeCanvas)
     return () => {
       window.removeEventListener('resize', resizeCanvas)
+      motionQuery.removeEventListener('change', updateMotion)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
   }, [arcadeSessionWords, publish, resizeCanvas])
 
   useEffect(() => {
+    if (gameState !== 'arcade_playing' || playMode !== 'platformer') return undefined
     const down = (event) => {
+      const s = stateRef.current
+      if (!s) return
+      if (event.key === 'Escape' && !event.repeat) {
+        event.preventDefault()
+        setPaused(!s.pausedAt)
+        return
+      }
+      if (s.pausedAt) {
+        if (event.key === 'Enter' && !event.repeat) {
+          event.preventDefault()
+          setPaused(false)
+        }
+        return
+      }
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'].includes(event.key)) {
         event.preventDefault()
       }
       keysRef.current.add(event.key.toLowerCase())
-      const s = stateRef.current
+      if (!event.repeat && s.phase === 'playing' && [' ', 'Spacebar', 'w', 'W', 'ArrowUp'].includes(event.key)) {
+        s.jumpBufferedAt = performance.now()
+      }
       if (s?.phase === 'calibrating' && (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar')) {
         s.calibration = KEYBOARD_CALIBRATION
         s.inputMode = 'keyboard'
@@ -945,20 +995,29 @@ function PlatformerOverlay() {
         startCountdown(s, performance.now(), '键盘模式准备')
         publish()
       }
-      if (event.key === 'Enter' || event.key.toLowerCase() === 'e') {
+      if (!event.repeat && (event.key === 'Enter' || event.key.toLowerCase() === 'e')) {
         completeChallenge('keyboard')
       }
     }
     const up = (event) => {
       keysRef.current.delete(event.key.toLowerCase())
     }
+    const onBlur = () => setPaused(true)
+    const onVisibilityChange = () => {
+      if (document.hidden) setPaused(true)
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', onBlur)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', onBlur)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      keysRef.current.clear()
     }
-  }, [completeChallenge])
+  }, [completeChallenge, gameState, playMode, publish, setPaused])
 
   useEffect(() => {
     if (gameState !== 'arcade_playing' || playMode !== 'platformer') return undefined
@@ -970,7 +1029,11 @@ function PlatformerOverlay() {
       const now = performance.now()
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
-      const pose = poseSnapshot(getLatestPose())
+      if (s.pausedAt) {
+        rafRef.current = requestAnimationFrame(step)
+        return
+      }
+      const pose = getPlatformerPoseSnapshot(getLatestPose())
       s.quality = pose.quality || 0
       s.visibleCount = pose.visibleCount || (pose.ok ? 6 : 0)
       s.poseSnapshot = pose
@@ -992,7 +1055,7 @@ function PlatformerOverlay() {
         } else {
           s.calibrationSamples = []
           s.calibrationProgress = 0
-          s.status = '请全身入镜，或按 Enter 键盘体验'
+          s.status = '请将肩膀和髋部放入镜头，或按 Enter 键盘体验'
         }
       } else if (s.phase === 'countdown') {
         s.countdown = Math.max(1, Math.ceil((COUNTDOWN_MS - (now - s.countdownStartedAt)) / 1000))
@@ -1022,7 +1085,8 @@ function PlatformerOverlay() {
           const dx = pose.centerX - s.calibration.centerX
           if (dx < -0.042) move -= 1
           if (dx > 0.042) move += 1
-          poseJump = pose.handsUp || pose.hipY < s.calibration.hipY - s.calibration.bodyHeight * 0.075
+          const jumpThreshold = Math.max(0.028, s.calibration.bodyHeight * 0.12)
+          poseJump = pose.handsUp || pose.hipY < s.calibration.hipY - jumpThreshold
         } else if (s.inputMode === 'pose' && !pose.ok) {
           s.status = '回到镜头继续'
         }
@@ -1035,11 +1099,12 @@ function PlatformerOverlay() {
         s.keyJumpActive = jumpKey
 
         const p = s.player
+        const wasGrounded = p.grounded
         const control = p.grounded ? 1 : AIR_CONTROL
         p.vx += move * WALK_ACCEL * control * dt
         p.vx = clamp(p.vx, -MAX_WALK_SPEED, MAX_WALK_SPEED)
         if (move === 0) {
-          p.vx *= p.grounded ? FRICTION : AIR_FRICTION
+          p.vx *= Math.pow(p.grounded ? FRICTION : AIR_FRICTION, dt * 60)
           if (Math.abs(p.vx) < 0.02) p.vx = 0
         }
 
@@ -1074,6 +1139,10 @@ function PlatformerOverlay() {
           if (!intersects(p, platform)) continue
           if (p.vy <= 0 && prev.y >= platform.y + platform.h - 0.08) {
             p.y = platform.y + platform.h
+            if (!wasGrounded && p.vy < -1) {
+              p.landedAt = now
+              s.landing = { x: p.x + p.w / 2, y: p.y, at: now }
+            }
             p.vy = platform.type === 'spring' ? JUMP_VELOCITY * 1.22 : 0
             p.grounded = platform.type !== 'spring'
             if (platform.type === 'spring') playSuccessTone(3)
@@ -1096,6 +1165,7 @@ function PlatformerOverlay() {
             s.collectedCoinIds.add(coin.id)
             s.score += coin.score
             s.status = `金币 +${coin.score}`
+            addPlatformerFeedback(s, coin.x, coin.y + 0.35, `金币 +${coin.score}`, '#fef08a')
             playSuccessTone(2)
           }
         })
@@ -1129,6 +1199,7 @@ function PlatformerOverlay() {
             s.score += 100
             p.vy = JUMP_VELOCITY * 0.58
             s.status = '踩掉障碍 +100'
+            addPlatformerFeedback(s, enemy.x + enemy.w / 2, enemy.y + enemy.h + 0.28, '+100', '#86efac')
             playSuccessTone(4)
           } else {
             hurtPlayer(enemy.id)
@@ -1158,6 +1229,7 @@ function PlatformerOverlay() {
           } else {
             s.player.health = Math.min(4, s.player.health + 1)
             enterLevel(s, s.levelIndex + 1, now, `进入 ${LEVELS[s.levelIndex + 1].name}`)
+            addPlatformerFeedback(s, s.player.x + s.player.w / 2, s.player.y + s.player.h + 0.3, '进入下一关', '#67e8f9')
             playSuccessTone(5)
           }
         }
@@ -1229,8 +1301,11 @@ function PlatformerOverlay() {
       </section>
 
       <div className="platformer-status">
-        <span>{ui.status}</span>
+        <span>{ui.paused ? '已暂停' : ui.status}</span>
         <em>{ui.inputMode === 'pose' ? `入镜 ${ui.quality}%` : ui.inputMode === 'touch' ? '触控' : '键盘'}</em>
+        {ui.phase !== 'calibrating' && (
+          <button type="button" onClick={() => setPaused(!ui.paused)}>{ui.paused ? '继续' : '暂停'}</button>
+        )}
       </div>
 
       {ui.phase === 'calibrating' && (
@@ -1240,8 +1315,8 @@ function PlatformerOverlay() {
           <div className="platformer-calibration-meter">
             <i style={{ width: `${calibrationPercent}%` }} />
           </div>
-          <p className={ui.visibleCount >= 4 ? 'ready' : ''}>全身站进中央框</p>
-          <p className={ui.quality >= 66 ? 'ready' : ''}>头、肩、脚保持可见</p>
+          <p className={ui.visibleCount >= 2 ? 'ready' : ''}>肩膀和髋部进入中央框</p>
+          <p className={ui.quality >= 50 ? 'ready' : ''}>保持上半身稳定可见</p>
           <p className={ui.calibrationProgress >= 0.5 ? 'ready' : ''}>站稳直到倒计时开始</p>
           <button type="button" onClick={startTouchMode}>使用触控开始</button>
         </div>
@@ -1250,7 +1325,7 @@ function PlatformerOverlay() {
       {ui.phase === 'countdown' && (
         <div className="platformer-ready">
           <span>{ui.levelName}</span>
-          <strong>{ui.countdown}</strong>
+          <strong key={ui.countdown}>{ui.countdown}</strong>
         </div>
       )}
 
@@ -1299,6 +1374,17 @@ function PlatformerOverlay() {
           >{challenge ? '✓' : '↑'}</button>
         </div>
       </div>
+
+      {ui.paused && (
+        <div className="platformer-paused" role="dialog" aria-modal="true" aria-label="冒险已暂停">
+          <section>
+            <strong>冒险已暂停</strong>
+            <p>准备好后继续，剩余时间已保留</p>
+            <button type="button" autoFocus onClick={() => setPaused(false)}>继续冒险</button>
+            <small>也可按 Enter 或 Esc 继续</small>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

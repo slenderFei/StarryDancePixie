@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import useGameStore from '../store/gameStore'
+import { getActionProgress } from '../utils/actionProgress'
 import './WordPanel.css'
 
 function WordPanel() {
-  const { getCurrentWord, gameState, score, streak, completedWords, words } = useGameStore()
+  const { getCurrentWord, gameState, score, streak, completedWords, words, currentPose } = useGameStore()
   const currentWord = getCurrentWord()
   const [showWord, setShowWord] = useState(false)
   
@@ -17,6 +18,9 @@ function WordPanel() {
   if (!currentWord) return null
   
   const progress = ((completedWords.length) / words.length) * 100
+  const actionProgress = getActionProgress(currentPose, currentWord.action)
+  const actionMatched = actionProgress === 1
+  const poseProgress = actionMatched ? 100 : Math.min(99, Math.round(actionProgress * 100))
   
   return (
     <div className={`word-panel ${showWord ? 'show' : ''} ${gameState === 'action_success' ? 'success' : ''}`}>
@@ -65,6 +69,17 @@ function WordPanel() {
           <div className="action-text">
             <span className="action-label">魔法动作</span>
             <p className="action-description">{currentWord.actionDescription}</p>
+            {gameState !== 'action_success' && currentPose && (
+              <div className={`action-readiness ${actionMatched ? 'ready' : ''}`}>
+                <div className="action-readiness-head">
+                  <span>{actionMatched ? '动作已识别' : '动作识别中'}</span>
+                  <strong>{poseProgress}%</strong>
+                </div>
+                <div className="action-readiness-track">
+                  <i style={{ width: `${poseProgress}%` }} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         

@@ -11,6 +11,7 @@
 
 .falling-hud {
   position: absolute;
+  z-index: 3;
   top: max(92px, calc(env(safe-area-inset-top, 0px) + 82px));
   left: 50%;
   transform: translateX(-50%);
@@ -106,17 +107,19 @@
 
 .falling-item {
   position: absolute;
+  left: 0;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   will-change: transform;
   cursor: none;
-  contain: layout paint style;
+  contain: layout style;
   transform-origin: center center;
 }
 
-.falling-item.balloon-shape {
+.balloon-shape {
   --balloon-a: #f8fafc;
   --balloon-b: #cbd5e1;
   --balloon-c: #94a3b8;
@@ -373,6 +376,70 @@
   pointer-events: none;
 }
 
+.balloon-hit-feedback {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: balloon-hit-rise 680ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  text-shadow: 0 3px 14px rgba(15, 23, 42, 0.46);
+}
+
+.balloon-hit-feedback strong {
+  color: #fef08a;
+  font-size: clamp(25px, 4vw, 42px);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.balloon-hit-ring {
+  position: absolute;
+  inset: -18px;
+  border: 3px solid rgba(254, 240, 138, 0.9);
+  border-radius: 50%;
+  animation: balloon-hit-ring 440ms ease-out forwards;
+}
+
+.balloon-tracking-paused {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 8px;
+  width: min(86vw, 340px);
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  background: rgba(9, 14, 31, 0.8);
+  color: #fff;
+  text-align: center;
+}
+
+.balloon-tracking-paused strong { font-size: 24px; }
+.balloon-tracking-paused span { font-size: 13px; color: #cbd5e1; }
+
+@keyframes balloon-hit-ring {
+  from { opacity: 1; transform: scale(0.5); }
+  to { opacity: 0; transform: scale(1.65); }
+}
+
+.balloon-hit-feedback span {
+  color: #cffafe;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@keyframes balloon-hit-rise {
+  0% { opacity: 0; transform: translate(-50%, -28%) scale(0.72); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -145%) scale(0.94); }
+}
+
 @keyframes arcade-pop-out {
   0% {
     opacity: 1;
@@ -386,6 +453,17 @@
     opacity: 0;
     filter: brightness(1.5) saturate(1.1) blur(3px);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .falling-item.balloon-shape,
+  .balloon-hit-feedback,
+  .balloon-hit-ring {
+    animation: none;
+  }
+
+  .balloon-hit-ring { display: none; }
+  .falling-item.popping { opacity: 0; }
 }
 
 /* 大屏幕时 HUD 略下移避免与居中装饰重叠不足 */

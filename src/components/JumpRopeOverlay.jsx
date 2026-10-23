@@ -132,6 +132,7 @@ function JumpRopeOverlay() {
     targetRemaining: 1,
     milestone: '',
     urgent: false,
+    airborne: false,
     manualPaused: false,
   })
 
@@ -183,8 +184,30 @@ function JumpRopeOverlay() {
       targetRemaining: Math.max(0, s.personalBest + 1 - s.count),
       milestone: wallNow < (s.milestoneUntil || 0) ? s.milestone : '',
       urgent: !!s.roundStartedAt && !pausedAt && secondsLeft <= 10,
+      airborne: !!s.inAir,
     })
   }, [])
+
+  const pauseRound = useCallback(() => {
+    const s = stateRef.current
+    if (!s?.roundStartedAt || s.manualPaused) return
+    const now = performance.now()
+    // Finish the tracking pause first so overlapping pauses are counted once.
+    if (s.missingSince) {
+      s.roundStartedAt = resumeRoundStart(s.roundStartedAt, s.missingSince, now)
+      s.missingSince = 0
+    }
+    s.manualPaused = true
+    s.manualPausedAt = now
+    s.inAir = false
+    s.airborneStartedAt = 0
+    s.jumpPeakLift = 0
+    s.jumpPeakHipLift = 0
+    s.jumpFlashUntil = 0
+    s.combo = 0
+    s.status = '已暂停'
+    publish()
+  }, [publish])
 
   const togglePause = useCallback(() => {
     const s = stateRef.current
@@ -198,14 +221,10 @@ function JumpRopeOverlay() {
       s.ignoreUntil = now + RESUME_SETTLE_MS
       s.status = '重新就位'
     } else {
-      s.manualPaused = true
-      s.manualPausedAt = now
-      s.inAir = false
-      s.combo = 0
-      s.status = '已暂停'
+      pauseRound()
     }
     publish()
-  }, [publish])
+  }, [pauseRound, publish])
 
   const drawScene = useCallback((pose, now) => {
     const canvas = canvasRef.current
@@ -421,11 +440,44 @@ function JumpRopeOverlay() {
 
   useEffect(() => {
     if (gameState !== 'arcade_playing' || playMode !== 'rope') return undefined
+    const pauseForFocusLoss = () => {
+      const s = stateRef.current
+      if (!s) return
+      if (s.roundStartedAt) {
+        pauseRound()
+      } else {
+        s.baselineSamples = []
+        s.calibrated = false
+        s.calibrationProgress = 0
+        s.phase = 'calibrating'
+        s.countdownStartedAt = 0
+        publish()
+      }
+    }
+    const onVisibilityChange = () => {
+      if (document.hidden) pauseForFocusLoss()
+    }
+    window.addEventListener('blur', pauseForFocusLoss)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('blur', pauseForFocusLoss)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [gameState, pauseRound, playMode, publish])
+
+  useEffect(() => {
+    if (gameState !== 'arcade_playing' || playMode !== 'rope') return undefined
 
     const step = () => {
       const s = stateRef.current
       if (!s || s.finished) return
+      if (document.hidden) {
+        rafRef.current = requestAnimationFrame(step)
+        return
+      }
       const now = performance.now()
+      const wasInAir = s.inAir
+      const previousCount = s.count
       const roundElapsed = effectiveRoundElapsed(now, s.roundStartedAt, s.missingSince)
       const pose = getLatestPose()
       const vw = window.innerWidth || 390
@@ -678,7 +730,7 @@ function JumpRopeOverlay() {
         return
       }
 
-      if (now - s.lastPublishAt > 130) {
+      if (s.inAir !== wasInAir || s.count !== previousCount || now - s.lastPublishAt > 130) {
         s.lastPublishAt = now
         publish()
       }
@@ -699,7 +751,7 @@ function JumpRopeOverlay() {
   const topThree = ui.leaderboard.slice(0, 3)
 
   return (
-    <div className={`jump-rope-overlay ${ui.urgent ? 'is-urgent' : ''}`}>
+    <div className={`jump-rope-overlay ${ui.urgent ? 'is-urgent' : ''} ${ui.airborne ? 'is-airborne' : ''}`}>
       <canvas ref={canvasRef} className="jump-rope-canvas" />
       <section className="jump-rope-hud" aria-label="虚拟跳绳挑战">
         <div className="jump-rope-title">
@@ -727,9 +779,9 @@ function JumpRopeOverlay() {
 
       {ui.phase === 'active' && (
         <>
-          <section className={`jump-rope-scorecard ${ui.counted ? 'is-counted' : ''}`}>
+          <section className={`jump-rope-scorecard ${ui.counted ? 'is-counted' : ''} ${ui.airborne ? 'is-airborne' : ''}`}>
             <span className="score-label">JUMPS</span>
-            <strong>{ui.count}</strong>
+            <strong key={ui.count}>{ui.count}</strong>
             <em>{ui.status}</em>
             <div className="jump-rope-combo">
               <span>{ui.combo}</span>
@@ -771,7 +823,7 @@ function JumpRopeOverlay() {
       {ui.phase !== 'active' && (
         <div className={`jump-rope-ready jump-rope-ready-${ui.phase}`}>
           <span>{ui.phase === 'calibrating' ? '站稳校准' : '准备'}</span>
-          <strong>{ui.phase === 'calibrating' ? `${ui.calibrationProgress}%` : ui.countdown}</strong>
+          <strong key={ui.phase === 'countdown' ? ui.countdown : 'calibration'}>{ui.phase === 'calibrating' ? `${ui.calibrationProgress}%` : ui.countdown}</strong>
           {ui.phase === 'calibrating' && (
             <div className="jump-rope-calibration-status">
               <i className={ui.bodyReady ? 'ready' : ''} />
@@ -809,7 +861,7 @@ function JumpRopeOverlay() {
       <aside className="jump-rope-coach">
         <span>入镜</span>
         <strong>{ui.quality}%</strong>
-        <em>{ui.paused ? '等待重新入镜' : ui.phase === 'active' ? ui.status : ui.phase === 'calibrating' ? '站稳校准' : '准备起跳'}</em>
+        <em>{ui.manualPaused ? '点击继续挑战' : ui.paused ? '等待重新入镜' : ui.phase === 'active' ? ui.status : ui.phase === 'calibrating' ? '站稳校准' : '准备起跳'}</em>
       </aside>
     </div>
   )

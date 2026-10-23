@@ -5,6 +5,7 @@ import { FaceMesh } from '@mediapipe/face_mesh'
 import useGameStore from '../store/gameStore'
 import { lmToCanvasMirroredDrawingPx } from '../utils/cameraLandmarks'
 import { computeFaceMetrics } from '../utils/faceMetrics'
+import { getActionProgress } from '../utils/actionProgress'
 
 // MediaPipe Pose 关键点索引
 const POSE_LANDMARKS = {
@@ -277,81 +278,9 @@ function PoseDetector() {
     })
   }, [arcadeFullscreen])
 
-  const checkAction = useCallback((landmarks, requiredAction) => {
-    if (!landmarks || landmarks.length === 0) return false
-
-    const leftWrist = landmarks[POSE_LANDMARKS.LEFT_WRIST]
-    const rightWrist = landmarks[POSE_LANDMARKS.RIGHT_WRIST]
-    const leftShoulder = landmarks[POSE_LANDMARKS.LEFT_SHOULDER]
-    const rightShoulder = landmarks[POSE_LANDMARKS.RIGHT_SHOULDER]
-    const nose = landmarks[POSE_LANDMARKS.NOSE]
-
-    if (!leftWrist || !rightWrist || !leftShoulder || !rightShoulder) return false
-
-    switch (requiredAction) {
-      case 'hands_up':
-        return leftWrist.y < leftShoulder.y && rightWrist.y < rightShoulder.y
-
-      case 'arms_wave':
-        return Math.abs(leftWrist.x - rightWrist.x) > 0.4
-
-      case 'arms_arc':
-        return (
-          leftWrist.y < leftShoulder.y &&
-          rightWrist.y < rightShoulder.y &&
-          Math.abs(leftWrist.x - rightWrist.x) > 0.3
-        )
-
-      case 'sway': {
-        const shoulderCenter = (leftShoulder.x + rightShoulder.x) / 2
-        return Math.abs(shoulderCenter - 0.5) > 0.05
-      }
-
-      case 'jump': {
-        const leftHip = landmarks[POSE_LANDMARKS.LEFT_HIP]
-        const rightHip = landmarks[POSE_LANDMARKS.RIGHT_HIP]
-        if (!leftHip || !rightHip) return false
-        const hipCenter = (leftHip.y + rightHip.y) / 2
-        return hipCenter < 0.55
-      }
-
-      case 'arms_triangle':
-        if (!nose) return false
-        return (
-          leftWrist.y < nose.y && rightWrist.y < nose.y && Math.abs(leftWrist.x - rightWrist.x) < 0.15
-        )
-
-      case 'wave_motion':
-        return Math.abs(leftWrist.x - rightWrist.x) > 0.5
-
-      case 'bloom':
-        return (
-          Math.abs(leftWrist.x - rightWrist.x) > 0.4 &&
-          leftWrist.y < leftShoulder.y + 0.1 &&
-          rightWrist.y < rightShoulder.y + 0.1
-        )
-
-      case 'stretch':
-        return Math.abs(leftWrist.x - rightWrist.x) > 0.6
-
-      case 'hands_together':
-        return (
-          Math.abs(leftWrist.x - rightWrist.x) < 0.1 &&
-          leftWrist.y > leftShoulder.y &&
-          rightWrist.y > rightShoulder.y
-        )
-
-      case 'arms_spread':
-        return (
-          Math.abs(leftWrist.x - rightWrist.x) > 0.6 &&
-          Math.abs(leftWrist.y - leftShoulder.y) < 0.15 &&
-          Math.abs(rightWrist.y - rightShoulder.y) < 0.15
-        )
-
-      default:
-        return false
-    }
-  }, [])
+  const checkAction = useCallback((landmarks, requiredAction) => (
+    getActionProgress(landmarks, requiredAction) === 1
+  ), [])
 
   const onResults = useCallback(
     (results) => {

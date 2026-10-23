@@ -179,6 +179,31 @@
   transform: translate(-50%, -50%) scale(1.025);
 }
 
+.jump-rope-scorecard.is-airborne {
+  border-color: rgba(250, 204, 21, 0.62);
+  box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.1), 0 18px 52px rgba(0, 0, 0, 0.28);
+  animation: rope-takeoff 180ms ease-out both;
+}
+
+.jump-rope-overlay.is-airborne .jump-rope-scorecard > strong {
+  color: #fef08a;
+}
+
+@keyframes rope-takeoff {
+  from { transform: translate(-50%, -50%) scale(1); }
+  to { transform: translate(-50%, -50%) scale(1.012); }
+}
+
+.jump-rope-scorecard.is-counted > strong,
+.jump-rope-ready-countdown > strong {
+  animation: rope-number-in 220ms ease-out both;
+}
+
+@keyframes rope-number-in {
+  from { opacity: 0.4; transform: scale(1.12); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .jump-rope-target {
   position: absolute;
   left: 14px;
@@ -606,6 +631,12 @@
   }
 
   .jump-rope-milestone {
+    animation: none;
+  }
+
+  .jump-rope-scorecard.is-airborne,
+  .jump-rope-scorecard.is-counted > strong,
+  .jump-rope-ready-countdown > strong {
     animation: none;
   }
 }
