@@ -332,3 +332,23 @@ export async function exchangeWechatCode(code, state) {
     return { ok: false, message: '无法连接微信登录服务，请检查服务端配置' }
   }
 }
+
+export async function getWechatLoginState(redirectUri) {
+  const config = getWechatConfig()
+  if (!config.configured) {
+    return { ok: false, message: '微信登录尚未配置 AppID，请联系管理员' }
+  }
+
+  try {
+    const url = new URL(config.exchangeUrl, window.location.origin)
+    url.searchParams.set('redirectUri', redirectUri)
+    const response = await fetch(url, { credentials: 'include' })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok || payload.ok === false || typeof payload.state !== 'string') {
+      return { ok: false, message: payload.message || '无法生成微信登录状态，请稍后重试' }
+    }
+    return { ok: true, state: payload.state }
+  } catch {
+    return { ok: false, message: '无法连接微信登录服务，请检查服务端配置' }
+  }
+}

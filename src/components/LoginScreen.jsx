@@ -3,17 +3,13 @@ import {
   addUser,
   exchangeWechatCode,
   getWechatConfig,
+  getWechatLoginState,
   login,
 } from '../utils/auth'
 import './LoginScreen.css'
 
 const WECHAT_SDK_URL = 'https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js'
 const WECHAT_STATE_KEY = 'starryDancePixie.wechatState.v1'
-
-function createWechatState() {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
 
 function loadWechatSdk() {
   const existing = document.querySelector('script[data-wechat-login-sdk]')
@@ -93,13 +89,17 @@ function LoginScreen({ onLogin }) {
     if (loginMode !== 'wechat' || !wechatConfig.appId || !qrRef.current) return undefined
 
     let active = true
-    const state = createWechatState()
-    sessionStorage.setItem(WECHAT_STATE_KEY, state)
     setWechatLoading(true)
     setWechatReady(false)
 
-    loadWechatSdk()
-      .then(() => {
+    getWechatLoginState(wechatConfig.redirectUri)
+      .then(async (stateResult) => {
+        if (!stateResult.ok) throw new Error(stateResult.message)
+        sessionStorage.setItem(WECHAT_STATE_KEY, stateResult.state)
+        await loadWechatSdk()
+        return stateResult.state
+      })
+      .then((state) => {
         if (!active || !qrRef.current || typeof window.WxLogin !== 'function') return
         qrRef.current.innerHTML = ''
         new window.WxLogin({
@@ -113,10 +113,10 @@ function LoginScreen({ onLogin }) {
         setWechatReady(true)
         setWechatLoading(false)
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return
         setWechatLoading(false)
-        setMessage('微信二维码加载失败，请检查网络或联系管理员')
+        setMessage(error.message || '微信二维码加载失败，请检查认证服务配置')
       })
 
     return () => {

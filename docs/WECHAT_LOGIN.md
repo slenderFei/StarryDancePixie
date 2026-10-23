@@ -43,11 +43,35 @@ VITE_WECHAT_EXCHANGE_PATH=/api/auth/wechat/exchange
 
 接口应启用 HTTPS、限制 CORS 来源并设置合理的请求频率限制。扫码成功后，前端会把返回的微信用户注册到本地会话并记录登录来源为“微信扫码”。
 
+本仓库已提供可直接部署的 EdgeOne Makers Node Function：
+`cloud-functions/api/auth/wechat/exchange.js` 对应 `/api/auth/wechat/exchange`。它会在服务端使用 AppID/AppSecret 换取微信 `access_token`，读取用户标识，并且只向浏览器返回用户身份字段，不返回 access token 或 AppSecret。
+
+在 EdgeOne 项目环境变量中配置以下服务端变量（变量名不能加 `VITE_`）：
+
+```text
+WECHAT_APP_ID=微信开放平台网站应用 AppID
+WECHAT_APP_SECRET=微信开放平台网站应用 AppSecret
+WECHAT_STATE_SECRET=随机生成的服务端 state 签名密钥（可选）
+WECHAT_ALLOWED_ORIGINS=https://你的域名
+WECHAT_ALLOWED_REDIRECT_URIS=https://你的域名/
+```
+
+`WECHAT_ALLOWED_REDIRECT_URIS` 必须与前端 `VITE_WECHAT_REDIRECT_URI` 完全一致；不要把 `WECHAT_APP_SECRET` 配置到前端构建变量中。二维码生成前会从同一 API 获取短时签名 `state`，换码接口会校验签名和有效期。EdgeOne Makers 会根据 `cloud-functions/` 目录把该文件发布为 API 路由，Node Functions 使用文件路径生成访问路由。[Node Functions 路由说明](https://pages.edgeone.ai/document/node-functions)
+
 如果没有配置 `VITE_WECHAT_APP_ID`，登录页会显示配置提示，不会再提供演示账号绕过注册。
 
 ## 本地开发与线上部署
 
-直接在 `http://127.0.0.1:5173` 启动时，通常不能完成微信扫码登录：微信开放平台要求回调域名已登记，且授权码还必须由服务端使用 `AppSecret` 换取用户身份。可以用 HTTPS 隧道把本地服务映射到已经登记的域名进行联调。
+本地联调需要同时启动 Vite 和认证 API。复制 `.env.auth.example` 为 `.env.auth`，填写 AppID、AppSecret 和已登记的回调地址，然后分别执行：
+
+```bash
+npm run dev:auth
+npm run dev
+```
+
+Vite 会把 `/api` 请求代理到 `127.0.0.1:8787`。微信开放平台仍然要求回调域名已登记，所以 `127.0.0.1` 通常不能直接作为真实扫码回调；可以使用 HTTPS 隧道，把已登记域名映射到本地 Vite 服务进行联调。
+
+线上部署时，EdgeOne Function 和静态页面应使用同一域名，前端的 `VITE_AUTH_API_BASE` 可以留空，让请求直接访问同域 `/api/auth/wechat/exchange`。
 
 上传部署并不会自动解决这件事。线上域名、`VITE_WECHAT_APP_ID`、回调地址和服务端交换接口都配置正确后才可用；缺少任一项，二维码可能显示但扫码回调会失败。
 
