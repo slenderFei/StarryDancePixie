@@ -29,7 +29,7 @@ test('all supported gestures reach the same full-progress recognition threshold'
     arms_spread: { 15: [0.1, 0.4], 16: [0.9, 0.4] },
   }
   for (const [action, points] of Object.entries(examples)) {
-    assert.equal(getActionProgress(pose(points), action), 1, action)
+    assert.equal(getActionProgress(pose(points), action, { hipY: 0.7, torsoHeight: 0.3 }), 1, action)
   }
 })
 
@@ -56,4 +56,15 @@ test('partial progress stays below completion immediately before the threshold',
   const almostRaised = pose({ 15: [0.3, 0.4001], 16: [0.7, 0.1] })
   const progress = getActionProgress(almostRaised, 'hands_up')
   assert.ok(progress > 0.99 && progress < 1)
+})
+
+test('jump requires a lift from the calibrated position regardless of camera height', () => {
+  const standingHigh = pose({ 11: [0.4, 0.15], 12: [0.6, 0.15], 23: [0.45, 0.4], 24: [0.55, 0.4] })
+  const baseline = { hipY: 0.4, torsoHeight: 0.25 }
+  assert.equal(getActionProgress(standingHigh, 'jump'), 0)
+  assert.equal(getActionProgress(standingHigh, 'jump', baseline), 0)
+  const jumping = pose({ 11: [0.4, 0.1], 12: [0.6, 0.1], 23: [0.45, 0.35], 24: [0.55, 0.35] })
+  assert.equal(getActionProgress(jumping, 'jump', baseline), 1)
+  jumping[23].visibility = 0.1
+  assert.equal(getActionProgress(jumping, 'jump', baseline), 0)
 })

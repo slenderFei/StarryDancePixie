@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import wordsData from '../data/words.json'
 import grade5bData from '../data/words_grade5b.json'
-import { playEncouragementSound, playSuccessTone, playWordPronunciation } from '../utils/soundEffects'
+import { playEncouragementSound, playSuccessTone, playWordPronunciation, stopGameSpeech } from '../utils/soundEffects'
 import { getSession } from '../utils/auth'
 import { saveGameRecord } from '../utils/gameRecords'
 
@@ -25,20 +25,33 @@ const ARCADE_ROUND_SIZE_BY_MODE = {
 }
 
 let latestPose = null
+let latestPoseAt = -Infinity
 let latestHands = null
+let encouragementTimer = null
+let nextWordTimer = null
+let starTimer = null
 
-export function getLatestPose() {
-  return latestPose
+export function getLatestPose(now = performance.now()) {
+  return now - latestPoseAt <= 750 ? latestPose : null
 }
 
 export function getLatestHands() {
   return latestHands
 }
 
+function clearGameTimers() {
+  clearTimeout(encouragementTimer)
+  clearTimeout(nextWordTimer)
+  clearTimeout(starTimer)
+  encouragementTimer = nextWordTimer = starTimer = null
+  stopGameSpeech()
+}
+
 // classic: idle -> learning -> action_pending -> action_success ...
 // arcade: idle -> arcade_playing -> completed
 const useGameStore = create((set, get) => ({
   gameState: 'idle',
+  roundId: 0,
 
   /** classic | balloon | fruit | rope | platformer | gnm | herb | catwarrior */
   playMode: 'classic',
@@ -63,6 +76,7 @@ const useGameStore = create((set, get) => ({
   currentHands: null,
   currentFace: null,
   isActionCorrect: false,
+  actionFeedback: null,
 
   showStarEffect: false,
   showSuccessAnimation: false,
@@ -85,6 +99,7 @@ const useGameStore = create((set, get) => ({
 
   /** @param {{ mode?: 'classic'|'balloon'|'fruit'|'rope'|'platformer'|'gnm', versus?: boolean, fruitVersus?: boolean }} [options] — fruitVersus 兼容旧参数，等同 versus */
   startGame: (options = {}) => {
+    clearGameTimers()
     const mode = options.mode ?? 'classic'
     const requestedVersus = !!(options.versus ?? options.fruitVersus)
     const arcadeVersus =
@@ -99,6 +114,8 @@ const useGameStore = create((set, get) => ({
         arcadeSessionWords: [],
         arcadeResult: null,
         gameState: 'learning',
+        roundId: get().roundId + 1,
+        actionFeedback: null,
         currentWordIndex: 0,
         completedWords: [],
         score: 0,
@@ -123,6 +140,8 @@ const useGameStore = create((set, get) => ({
       arcadeSessionWords: session,
       arcadeResult: null,
       gameState: 'arcade_playing',
+      roundId: get().roundId + 1,
+      actionFeedback: null,
       currentWordIndex: 0,
       completedWords: [],
       score: 0,
@@ -209,18 +228,24 @@ const useGameStore = create((set, get) => ({
 
   setGameState: (state) => set({ gameState: state }),
 
-  startAction: () => set({ gameState: 'action_pending' }),
+  startAction: () => {
+    if (get().playMode === 'classic' && get().gameState === 'learning') {
+      set({ gameState: 'action_pending' })
+    }
+  },
 
   completeAction: () => {
     const state = get()
+    if (state.playMode !== 'classic' || !['learning', 'action_pending'].includes(state.gameState)) return
     const currentWord = state.words[state.currentWordIndex]
+    if (!currentWord) return
     const newStreak = state.streak + 1
     const newCompletedWords = [...state.completedWords, currentWord]
 
-    playSuccessTone(newStreak)
-    playWordPronunciation(currentWord.word)
-
-    setTimeout(() => {
+    clearGameTimers()
+    encouragementTimer = setTimeout(() => {
+      encouragementTimer = null
+      if (get().roundId !== state.roundId || get().gameState !== 'action_success') return
       const encouragementInfo = playEncouragementSound(
         newStreak,
         newCompletedWords.length,
@@ -243,13 +268,19 @@ const useGameStore = create((set, get) => ({
       completedWords: newCompletedWords,
     })
 
-    setTimeout(() => {
-      get().nextWord()
+    playSuccessTone(newStreak)
+    playWordPronunciation(currentWord.word)
+
+    nextWordTimer = setTimeout(() => {
+      nextWordTimer = null
+      if (get().roundId === state.roundId) get().nextWord()
     }, 2500)
   },
 
   nextWord: () => {
     const state = get()
+    if (state.playMode !== 'classic' || state.gameState !== 'action_success') return
+    clearGameTimers()
     const nextIndex = state.currentWordIndex + 1
 
     if (nextIndex >= state.words.length) {
@@ -273,6 +304,7 @@ const useGameStore = create((set, get) => ({
         showSuccessAnimation: false,
         showStarEffect: false,
         arcadeResult: null,
+        actionFeedback: null,
       })
     } else {
       set({
@@ -281,15 +313,20 @@ const useGameStore = create((set, get) => ({
         isActionCorrect: false,
         showSuccessAnimation: false,
         showStarEffect: false,
+        actionFeedback: null,
       })
     }
   },
 
   resetGame: () => {
+    clearGameTimers()
     latestPose = null
+    latestPoseAt = -Infinity
     latestHands = null
     set({
       gameState: 'idle',
+      roundId: get().roundId + 1,
+      actionFeedback: null,
       playMode: 'classic',
       arcadeVersus: false,
       arcadeSessionWords: [],
@@ -310,17 +347,25 @@ const useGameStore = create((set, get) => ({
   },
 
   triggerStarEffect: () => {
+    if (get().showStarEffect) return
     set({ showStarEffect: true })
-    setTimeout(() => set({ showStarEffect: false }), 2000)
+    clearTimeout(starTimer)
+    starTimer = setTimeout(() => {
+      starTimer = null
+      set({ showStarEffect: false })
+    }, 2000)
   },
 
   setMousePosition: (x, y) => set({ mousePosition: { x, y } }),
 
   setPose: (pose, options = {}) => {
     latestPose = pose
+    latestPoseAt = pose ? performance.now() : -Infinity
     if (options.publish === false) return
     set({ currentPose: pose, poseDetected: !!pose })
   },
+
+  setActionFeedback: (actionFeedback) => set({ actionFeedback }),
 
   setHands: (hands, options = {}) => {
     latestHands = hands

@@ -1,6 +1,13 @@
 // 音效工具函数 - 自然的鼓励语音
 
 let sharedAudioContext = null
+let speechTimer = null
+
+export function stopGameSpeech() {
+  clearTimeout(speechTimer)
+  speechTimer = null
+  if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
+}
 
 function getSharedAudioContext() {
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext
@@ -162,7 +169,7 @@ export function playWordPronunciation(word) {
   try {
     if ('speechSynthesis' in window) {
       // 停止任何正在播放的语音
-      speechSynthesis.cancel()
+      stopGameSpeech()
       
       const utterance = new SpeechSynthesisUtterance(word)
       utterance.lang = 'en-US'
@@ -196,7 +203,8 @@ export function playWordPronunciation(word) {
       }
       
       // 延迟一点确保语音列表已加载
-      setTimeout(() => {
+      speechTimer = setTimeout(() => {
+        speechTimer = null
         speechSynthesis.speak(utterance)
       }, 100)
     }
@@ -218,7 +226,7 @@ export function playEncouragementSound(streak = 1, completedWords = 0, totalWord
     
     if ('speechSynthesis' in window) {
       // 停止任何正在播放的语音
-      speechSynthesis.cancel()
+      stopGameSpeech()
       
       const progress = completedWords / totalWords
       const text = getEncouragementText(encouragementInfo.type, streak, progress)
@@ -277,7 +285,8 @@ export function playEncouragementSound(streak = 1, completedWords = 0, totalWord
       }
       
       // 延迟一点确保语音列表已加载
-      setTimeout(() => {
+      speechTimer = setTimeout(() => {
+        speechTimer = null
         speechSynthesis.speak(utterance)
       }, 50)
       

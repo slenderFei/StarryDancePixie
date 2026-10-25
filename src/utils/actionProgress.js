@@ -7,8 +7,16 @@ function visible(point) {
     (point.visibility == null || point.visibility >= 0.42)
 }
 
+export function getJumpAnchor(landmarks) {
+  const points = [11, 12, 23, 24].map((index) => landmarks?.[index])
+  if (!points.every(visible)) return null
+  const shoulderY = (points[0].y + points[1].y) / 2
+  const hipY = (points[2].y + points[3].y) / 2
+  return { hipY, torsoHeight: Math.max(0.12, hipY - shoulderY) }
+}
+
 // A score of 1 is also the recognition threshold, so the meter and scoring agree.
-export function getActionProgress(landmarks, action) {
+export function getActionProgress(landmarks, action, jumpBaseline = null) {
   if (!landmarks) return 0
   const leftShoulder = landmarks[11]
   const rightShoulder = landmarks[12]
@@ -17,10 +25,10 @@ export function getActionProgress(landmarks, action) {
     return atLeast(Math.abs((leftShoulder.x + rightShoulder.x) / 2 - 0.5), 0.05)
   }
   if (action === 'jump') {
-    const leftHip = landmarks[23]
-    const rightHip = landmarks[24]
-    if (![leftHip, rightHip].every(visible)) return 0
-    return atMost((leftHip.y + rightHip.y) / 2, 0.55, 0.16)
+    const anchor = getJumpAnchor(landmarks)
+    if (!anchor || !jumpBaseline) return 0
+    const threshold = Math.max(0.025, jumpBaseline.torsoHeight * 0.14)
+    return atLeast(jumpBaseline.hipY - anchor.hipY, threshold)
   }
 
   const leftWrist = landmarks[15]

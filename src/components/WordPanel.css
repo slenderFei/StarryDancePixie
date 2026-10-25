@@ -397,6 +397,14 @@
   margin: 0;
 }
 
+.action-readiness.holding .action-readiness-track i {
+  background: linear-gradient(90deg, #facc15, #fef08a);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-readiness-track i { transition: none; }
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   .word-panel {

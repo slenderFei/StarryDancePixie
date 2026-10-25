@@ -2,10 +2,11 @@ import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { Pose } from '@mediapipe/pose'
 import { Hands } from '@mediapipe/hands'
 import { FaceMesh } from '@mediapipe/face_mesh'
-import useGameStore from '../store/gameStore'
+import useGameStore, { getLatestPose } from '../store/gameStore'
 import { lmToCanvasMirroredDrawingPx } from '../utils/cameraLandmarks'
 import { computeFaceMetrics } from '../utils/faceMetrics'
 import { getActionProgress } from '../utils/actionProgress'
+import { createActionRecognition, updateActionRecognition } from '../utils/actionRecognition'
 
 // MediaPipe Pose 关键点索引
 const POSE_LANDMARKS = {
@@ -209,7 +210,7 @@ function PoseDetector() {
   const lastHandsSendRef = useRef(0)
   const lastFacePublishRef = useRef(0)
   const handsActiveRef = useRef(false)
-  const actionLockRef = useRef(null)
+  const actionRecognitionRef = useRef(createActionRecognition())
 
   const [isLoading, setIsLoading] = useState(true)
   const [poseStatus, setPoseStatus] = useState('')
@@ -284,6 +285,11 @@ function PoseDetector() {
 
   const onResults = useCallback(
     (results) => {
+      if (document.hidden) {
+        setPose(null)
+        actionRecognitionRef.current = createActionRecognition()
+        return
+      }
       const canvas = canvasRef.current
       const ctx = canvas?.getContext('2d')
 
@@ -338,23 +344,24 @@ function PoseDetector() {
 
         const currentWord = gs.getCurrentWord()
         if (currentWord && (gs.gameState === 'learning' || gs.gameState === 'action_pending')) {
-          const actionMatched = checkAction(landmarks, currentWord.action)
+          const feedback = updateActionRecognition(
+            actionRecognitionRef.current,
+            `${gs.roundId}:${currentWord.id}`,
+            currentWord.action,
+            landmarks,
+            now,
+          )
+          if (shouldPublishPose || feedback.matched) gs.setActionFeedback(feedback)
 
-          if (actionMatched) {
+          if (feedback.matched) {
             updatePoseStatus('✨ 动作正确！')
-            if (actionLockRef.current !== currentWord.id) {
-              actionLockRef.current = currentWord.id
-              completeAction()
-              triggerStarEffect()
-            }
+            completeAction()
           } else {
-            actionLockRef.current = null
-            updatePoseStatus(`🎯 ${currentWord.actionDescription}`)
+            updatePoseStatus(feedback.phase === 'calibrating' ? '🐰 先站稳，再轻轻跳起' :
+              feedback.phase === 'holding' ? '✨ 保持动作，即将完成' : `🎯 ${currentWord.actionDescription}`)
           }
         } else {
-          if (gs.gameState !== 'action_success') {
-            actionLockRef.current = null
-          }
+          actionRecognitionRef.current = createActionRecognition()
           updatePoseStatus('✅ 姿态已识别')
         }
 
@@ -364,6 +371,8 @@ function PoseDetector() {
         }
       } else {
         setPose(null)
+        actionRecognitionRef.current = createActionRecognition()
+        if (gs.actionFeedback) gs.setActionFeedback(null)
         lastPosePublishRef.current = 0
         updatePoseStatus('🔍 请站在摄像头前，确保光线充足')
       }
@@ -445,6 +454,20 @@ function PoseDetector() {
 
   useEffect(() => {
     let isMounted = true
+    let cameraStream = null
+    let startupTimer = null
+    const clearTracking = () => {
+      setPose(null)
+      actionRecognitionRef.current = createActionRecognition()
+      if (useGameStore.getState().actionFeedback) useGameStore.getState().setActionFeedback(null)
+    }
+    const onVisibilityChange = () => {
+      if (document.hidden) clearTracking()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    const trackingWatchdog = setInterval(() => {
+      if (useGameStore.getState().currentPose && !getLatestPose()) clearTracking()
+    }, 250)
 
     const initPose = async () => {
       try {
@@ -520,6 +543,17 @@ function PoseDetector() {
             facingMode: 'user',
           },
         })
+        cameraStream = stream
+        if (!isMounted) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
+        stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => {
+          if (!isMounted) return
+          clearTracking()
+          setCameraReady(false)
+          updatePoseStatus('📷 摄像头已断开，请重新连接')
+        }))
 
         if (videoRef.current && isMounted) {
           const videoEl = videoRef.current
@@ -541,7 +575,7 @@ function PoseDetector() {
                 const detect = async () => {
                   if (!isMounted) return
 
-                  if (videoEl && poseRef.current && videoEl.readyState === 4) {
+                  if (!document.hidden && videoEl && poseRef.current && videoEl.readyState === 4) {
                     try {
                       const gs = useGameStore.getState()
                       const wantsFace = isGNMMode(gs.gameState, gs.playMode)
@@ -572,6 +606,7 @@ function PoseDetector() {
                         await handsRef.current.send({ image: videoEl })
                       }
                     } catch (error) {
+                      clearTracking()
                       console.error('❌ Camera detection error:', error)
                     }
                   }
@@ -581,7 +616,7 @@ function PoseDetector() {
                   }
                 }
 
-                setTimeout(() => {
+                startupTimer = setTimeout(() => {
                   if (isMounted) {
                     detect()
                   }
@@ -619,13 +654,15 @@ function PoseDetector() {
 
     return () => {
       isMounted = false
+      clearTimeout(startupTimer)
+      clearInterval(trackingWatchdog)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
-      if (videoRef.current?.srcObject) {
-        const tracks = videoRef.current.srcObject.getTracks()
-        tracks.forEach((track) => track.stop())
-      }
+      cameraStream?.getTracks().forEach((track) => track.stop())
+      setCameraReady(false)
+      clearTracking()
       setHands(null)
       setFace(null)
       poseRef.current?.close?.().catch(() => {})
@@ -640,6 +677,7 @@ function PoseDetector() {
     setFace,
     setHands,
     setPose,
+    updatePoseStatus,
     setPoseVideoIntrinsics,
   ])
 

@@ -7,6 +7,8 @@ import './PlatformerOverlay.css'
 const WORDS_PER_LEVEL = 5
 const ROUND_SECONDS = 240
 const CALIBRATION_FRAMES = 20
+const CALIBRATION_SAMPLE_MS = 75
+const TRACKING_RESUME_MS = 650
 const COUNTDOWN_MS = 2500
 const PLAYER_W = 0.62
 const PLAYER_H = 1.05
@@ -411,6 +413,9 @@ function PlatformerOverlay() {
     levelProgress: 0,
     inputMode: 'pose',
     paused: false,
+    pauseReason: '',
+    resumeProgress: 0,
+    poseReady: false,
   })
 
   const resizeCanvas = useCallback(() => {
@@ -451,10 +456,13 @@ function PlatformerOverlay() {
       levelProgress: clamp(s.player.x / level.finishX, 0, 1),
       inputMode: s.inputMode,
       paused: !!s.pausedAt,
+      pauseReason: s.pauseReason,
+      resumeProgress: s.trackingReadySince ? clamp((performance.now() - s.trackingReadySince) / TRACKING_RESUME_MS, 0, 1) : 0,
+      poseReady: !!s.poseSnapshot?.ok,
     })
   }, [])
 
-  const setPaused = useCallback((paused) => {
+  const setPaused = useCallback((paused, reason = 'manual') => {
     const s = stateRef.current
     if (!s || s.finished) return
     keysRef.current.clear()
@@ -465,9 +473,14 @@ function PlatformerOverlay() {
       return
     }
     const now = performance.now()
-    if (paused && !s.pausedAt) {
-      s.pausedAt = now
+    if (paused) {
+      if (!s.pausedAt) s.pausedAt = now
+      s.pauseReason = reason
+      s.trackingReadySince = 0
+      s.trackingReadyPose = null
     } else if (!paused && s.pausedAt) {
+      const pose = getPlatformerPoseSnapshot(getLatestPose())
+      if (s.inputMode === 'pose' && !pose.ok) return
       const duration = now - s.pausedAt
       if (s.startedAt) s.startedAt += duration
       if (s.phase === 'countdown') s.countdownStartedAt += duration
@@ -478,10 +491,24 @@ function PlatformerOverlay() {
       s.lastJumpAt = now
       s.poseJumpActive = true
       s.keyJumpActive = false
+      if (s.pauseReason === 'tracking' && s.inputMode === 'pose') {
+        s.calibration = { centerX: pose.centerX, hipY: pose.hipY, bodyHeight: pose.bodyHeight }
+      }
       s.pausedAt = 0
+      s.pauseReason = ''
+      s.trackingReadySince = 0
+      s.trackingReadyPose = null
     }
     publish()
   }, [publish])
+
+  const resumeWithControls = useCallback(() => {
+    const s = stateRef.current
+    if (!s) return
+    s.inputMode = window.matchMedia('(pointer: coarse)').matches ? 'touch' : 'keyboard'
+    s.calibration = KEYBOARD_CALIBRATION
+    setPaused(false)
+  }, [setPaused])
 
   const completeChallenge = useCallback((source = 'gesture') => {
     const s = stateRef.current
@@ -902,6 +929,9 @@ function PlatformerOverlay() {
       countdownStartedAt: 0,
       startedAt: 0,
       pausedAt: 0,
+      pauseReason: '',
+      trackingReadySince: 0,
+      trackingReadyPose: null,
       finished: false,
       reported: false,
       completed: false,
@@ -913,6 +943,7 @@ function PlatformerOverlay() {
       calibrationProgress: 0,
       poseSnapshot: null,
       calibrationSamples: [],
+      lastCalibrationSampleAt: -Infinity,
       calibration: null,
       inputMode: 'pose',
       words: arcadeSessionWords.slice(0, TOTAL_WORDS),
@@ -968,7 +999,7 @@ function PlatformerOverlay() {
     const down = (event) => {
       const s = stateRef.current
       if (!s) return
-      if (event.key === 'Escape' && !event.repeat) {
+      if (event.key.toLowerCase() === 'p' && !event.repeat) {
         event.preventDefault()
         setPaused(!s.pausedAt)
         return
@@ -1029,18 +1060,42 @@ function PlatformerOverlay() {
       const now = performance.now()
       const dt = Math.min(0.033, (now - last) / 1000)
       last = now
-      if (s.pausedAt) {
-        rafRef.current = requestAnimationFrame(step)
-        return
-      }
       const pose = getPlatformerPoseSnapshot(getLatestPose())
       s.quality = pose.quality || 0
       s.visibleCount = pose.visibleCount || (pose.ok ? 6 : 0)
       s.poseSnapshot = pose
 
+      if (s.inputMode === 'pose' && s.phase !== 'calibrating' && !pose.ok && !s.pausedAt) {
+        setPaused(true, 'tracking')
+      }
+      if (s.pausedAt) {
+        if (s.pauseReason === 'tracking') {
+          if (pose.ok) {
+            const anchor = s.trackingReadyPose
+            if (!anchor || Math.abs(pose.centerX - anchor.centerX) > 0.025 || Math.abs(pose.hipY - anchor.hipY) > 0.02) {
+              s.trackingReadySince = now
+              s.trackingReadyPose = pose
+            }
+            if (now - s.trackingReadySince >= TRACKING_RESUME_MS) setPaused(false)
+          } else {
+            s.trackingReadySince = 0
+            s.trackingReadyPose = null
+          }
+        }
+        if (now - s.lastPublishAt > 120) {
+          s.lastPublishAt = now
+          publish()
+        }
+        rafRef.current = requestAnimationFrame(step)
+        return
+      }
+
       if (s.phase === 'calibrating') {
         if (pose.ok) {
-          s.calibrationSamples.push(pose)
+          if (now - s.lastCalibrationSampleAt >= CALIBRATION_SAMPLE_MS) {
+            s.calibrationSamples.push(pose)
+            s.lastCalibrationSampleAt = now
+          }
           s.calibrationProgress = Math.min(1, s.calibrationSamples.length / CALIBRATION_FRAMES)
           s.status = `站稳校准 ${Math.min(s.calibrationSamples.length, CALIBRATION_FRAMES)}/${CALIBRATION_FRAMES}`
           if (s.calibrationSamples.length >= CALIBRATION_FRAMES) {
@@ -1259,7 +1314,7 @@ function PlatformerOverlay() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [completeChallenge, drawScene, finishRun, gameState, hurtPlayer, playMode, publish])
+  }, [completeChallenge, drawScene, finishRun, gameState, hurtPlayer, playMode, publish, setPaused])
 
   if (gameState !== 'arcade_playing' || playMode !== 'platformer') return null
 
@@ -1267,7 +1322,7 @@ function PlatformerOverlay() {
   const calibrationPercent = Math.round((ui.calibrationProgress || 0) * 100)
 
   return (
-    <div className={`platformer-overlay ${ui.phase === 'calibrating' ? 'is-calibrating' : ''}`}>
+    <div className={`platformer-overlay ${ui.phase === 'calibrating' ? 'is-calibrating' : ''} ${ui.pauseReason === 'tracking' ? 'is-tracking-paused' : ''}`}>
       <canvas ref={canvasRef} className="platformer-canvas" />
 
       <section className="platformer-hud" aria-label="星光大冒险">
@@ -1378,10 +1433,18 @@ function PlatformerOverlay() {
       {ui.paused && (
         <div className="platformer-paused" role="dialog" aria-modal="true" aria-label="冒险已暂停">
           <section>
-            <strong>冒险已暂停</strong>
-            <p>准备好后继续，剩余时间已保留</p>
-            <button type="button" autoFocus onClick={() => setPaused(false)}>继续冒险</button>
-            <small>也可按 Enter 或 Esc 继续</small>
+            <strong>{ui.pauseReason === 'tracking' ? '回到镜头，冒险等你' : '冒险已暂停'}</strong>
+            <p>{ui.pauseReason === 'tracking' ? '肩膀和髋部入镜，站稳后自动继续' : '准备好后继续，剩余时间已保留'}</p>
+            {ui.pauseReason === 'tracking' && (
+              <div className="platformer-resume-meter" role="progressbar" aria-label="重新入镜" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.resumeProgress * 100)}>
+                <i style={{ width: `${ui.resumeProgress * 100}%` }} />
+              </div>
+            )}
+            {ui.pauseReason !== 'tracking' && (
+              <button type="button" autoFocus disabled={ui.inputMode === 'pose' && !ui.poseReady} onClick={() => setPaused(false)}>继续冒险</button>
+            )}
+            {ui.inputMode === 'pose' && <button type="button" className="platformer-controls-fallback" onClick={resumeWithControls}>改用键盘 / 触控</button>}
+            <small>P 暂停 / 继续 · Esc 返回首页</small>
           </section>
         </div>
       )}

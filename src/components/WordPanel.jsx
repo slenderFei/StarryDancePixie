@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import useGameStore from '../store/gameStore'
-import { getActionProgress } from '../utils/actionProgress'
 import './WordPanel.css'
 
 function WordPanel() {
-  const { getCurrentWord, gameState, score, streak, completedWords, words, currentPose } = useGameStore()
+  const { getCurrentWord, gameState, score, streak, completedWords, words, currentPose, actionFeedback, roundId } = useGameStore()
   const currentWord = getCurrentWord()
   const [showWord, setShowWord] = useState(false)
   
@@ -18,9 +17,13 @@ function WordPanel() {
   if (!currentWord) return null
   
   const progress = ((completedWords.length) / words.length) * 100
-  const actionProgress = getActionProgress(currentPose, currentWord.action)
-  const actionMatched = actionProgress === 1
-  const poseProgress = actionMatched ? 100 : Math.min(99, Math.round(actionProgress * 100))
+  const feedback = actionFeedback?.key === `${roundId}:${currentWord.id}` ? actionFeedback : null
+  const actionMatched = feedback?.matched === true
+  const holding = feedback?.phase === 'holding'
+  const calibrating = feedback?.phase === 'calibrating'
+  const poseProgress = actionMatched ? 100 : Math.min(99, Math.round((holding ? feedback.holdProgress : feedback?.progress || 0) * 100))
+  const actionHint = !currentPose ? '请回到镜头中' : calibrating ? '站稳，校准起跳位置' :
+    actionMatched ? '动作已识别' : holding ? '保持动作，即将完成' : '跟着提示完成动作'
   
   return (
     <div className={`word-panel ${showWord ? 'show' : ''} ${gameState === 'action_success' ? 'success' : ''}`}>
@@ -69,13 +72,13 @@ function WordPanel() {
           <div className="action-text">
             <span className="action-label">魔法动作</span>
             <p className="action-description">{currentWord.actionDescription}</p>
-            {gameState !== 'action_success' && currentPose && (
-              <div className={`action-readiness ${actionMatched ? 'ready' : ''}`}>
+            {gameState !== 'action_success' && (
+              <div className={`action-readiness ${actionMatched ? 'ready' : ''} ${holding ? 'holding' : ''}`}>
                 <div className="action-readiness-head">
-                  <span>{actionMatched ? '动作已识别' : '动作识别中'}</span>
+                  <span role="status">{actionHint}</span>
                   <strong>{poseProgress}%</strong>
                 </div>
-                <div className="action-readiness-track">
+                <div className="action-readiness-track" role="progressbar" aria-label={actionHint} aria-valuemin={0} aria-valuemax={100} aria-valuenow={poseProgress}>
                   <i style={{ width: `${poseProgress}%` }} />
                 </div>
               </div>
