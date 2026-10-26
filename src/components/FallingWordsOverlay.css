@@ -422,6 +422,7 @@
 
 .balloon-tracking-paused strong { font-size: 24px; }
 .balloon-tracking-paused span { font-size: 13px; color: #cbd5e1; }
+.balloon-tracking-paused small { color: rgba(226, 232, 240, 0.58); font-size: 11px; }
 
 @keyframes balloon-hit-ring {
   from { opacity: 1; transform: scale(0.5); }

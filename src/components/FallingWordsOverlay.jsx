@@ -176,7 +176,7 @@ function FallingWordsOverlay() {
   const popTimeoutsRef = useRef(new Set())
   const feedbackTimeoutsRef = useRef(new Set())
   const [hitFeedback, setHitFeedback] = useState([])
-  const [trackingPaused, setTrackingPaused] = useState(false)
+  const [trackingPauseReason, setTrackingPauseReason] = useState('')
   const [renderItems, setRenderItems] = useState([])
   const [hudStats, setHudStats] = useState({
     popped: 0,
@@ -259,7 +259,7 @@ function FallingWordsOverlay() {
     }
     setRenderItems([])
     setHitFeedback([])
-    setTrackingPaused(false)
+    setTrackingPauseReason('')
     setHudStats({
       popped: 0,
       missed: 0,
@@ -364,11 +364,12 @@ function FallingWordsOverlay() {
     let raf = null
     let last = performance.now()
     let lastHudCommit = 0
-    let wasPaused = false
+    let lastPauseReason = ''
+    let animationTime = 0
     const onVisibilityChange = () => {
       if (document.hidden) {
-        wasPaused = true
-        setTrackingPaused(true)
+        lastPauseReason = 'hidden'
+        setTrackingPauseReason('hidden')
       }
     }
     const onResize = () => {
@@ -393,30 +394,36 @@ function FallingWordsOverlay() {
       const useCoverHits = gs.playMode === 'balloon'
       const iw = gs.poseVideoIntrinsics?.width ?? 0
       const ih = gs.poseVideoIntrinsics?.height ?? 0
+      const vw = innerWidth || 390
+      const vh = innerHeight || 820
 
-      const hasTracking = [...LEFT_BODY, ...RIGHT_BODY, POSE_LM.NOSE].some((index) => {
+      const hasArmTracking = [...LEFT_BODY, ...RIGHT_BODY].some((index) => {
         const point = landmarks?.[index]
-        return point && (point.visibility == null || point.visibility >= VIS_MIN)
+        if (!point || (point.visibility != null && point.visibility < VIS_MIN)) return false
+        const { x, y } = lmToHitPx(point, vw, vh, useCoverHits, iw, ih)
+        return x >= 0 && x <= vw && y >= 0 && y <= vh
       })
-      const paused = document.hidden || !hasTracking
+      const pauseReason = document.hidden ? 'hidden' : !hasArmTracking ? 'arms' : ''
+      const paused = !!pauseReason
       if (paused) {
-        if (!wasPaused) setTrackingPaused(true)
-        wasPaused = true
+        if (lastPauseReason !== pauseReason) {
+          setTrackingPauseReason(pauseReason)
+          lastPauseReason = pauseReason
+        }
         raf = requestAnimationFrame(step)
         return
       }
-      if (wasPaused) {
+      if (lastPauseReason) {
         nextSpawnAtRef.current = now + 500
         hitClockRef.current = { hit: now, p1: now, p2: now }
-        setTrackingPaused(false)
-        wasPaused = false
+        setTrackingPauseReason('')
+        lastPauseReason = ''
         dt = 0
       }
+      animationTime += dt
 
       trySpawn(now)
 
-      const vw = innerWidth || 390
-      const vh = innerHeight || 820
       const minVH = Math.min(vw, vh)
 
       const beforePrune = itemsRef.current.length
@@ -431,9 +438,9 @@ function FallingWordsOverlay() {
         it.y += it.vy * dt
 
         const swayAmp = it.swayAmp ?? 0.018
-        const sway = Math.sin(now * 0.00115 + it.phase) * minVH * swayAmp
+        const sway = Math.sin(animationTime * 0.00115 + it.phase) * minVH * swayAmp
         it.swayPx = sway
-        it.wobbleDeg = Math.sin(now * 0.0018 + it.phase * 1.3) * (isBalloon ? 5.5 : 2)
+        it.wobbleDeg = Math.sin(animationTime * 0.0018 + it.phase * 1.3) * (isBalloon ? 5.5 : 2)
         const balloon = getBalloonGeometry(it, vw)
         applyItemTransform(it, vw)
 
@@ -595,10 +602,15 @@ function FallingWordsOverlay() {
         </div>
       </div>
 
-      {trackingPaused && (
+      {trackingPauseReason && (
         <div className="balloon-tracking-paused" role="status">
-          <strong>等待入镜</strong>
-          <span>让手臂进入画面，气球会继续飘落</span>
+          <strong>气球已暂停</strong>
+          <span>
+            {trackingPauseReason === 'hidden'
+              ? '回到游戏页面后继续'
+              : '让手臂进入画面，气球会继续飘落'}
+          </span>
+          <small>分数与气球位置已保留</small>
         </div>
       )}
 

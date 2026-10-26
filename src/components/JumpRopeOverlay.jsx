@@ -467,6 +467,25 @@ function JumpRopeOverlay() {
 
   useEffect(() => {
     if (gameState !== 'arcade_playing' || playMode !== 'rope') return undefined
+    const onKeyDown = (event) => {
+      if (event.repeat || event.ctrlKey || event.altKey || event.metaKey ||
+        event.target?.isContentEditable || event.target?.closest?.('input, textarea, select')) return
+      const key = event.key.toLowerCase()
+      const s = stateRef.current
+      if (key === 'p') {
+        event.preventDefault()
+        togglePause()
+      } else if (key === 'enter' && s?.manualPaused) {
+        event.preventDefault()
+        togglePause()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [gameState, playMode, togglePause])
+
+  useEffect(() => {
+    if (gameState !== 'arcade_playing' || playMode !== 'rope') return undefined
 
     const step = () => {
       const s = stateRef.current
@@ -837,6 +856,7 @@ function JumpRopeOverlay() {
         <div className="jump-rope-paused" role="status">
           <strong>已暂停</strong>
           <span>{ui.manualPaused ? '点击顶部继续挑战' : '回到镜头后继续计时'}</span>
+          {ui.manualPaused && <small>P / Enter 继续 · Esc 返回首页</small>}
         </div>
       )}
 

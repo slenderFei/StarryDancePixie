@@ -476,6 +476,11 @@
   font-weight: 850;
 }
 
+.jump-rope-paused small {
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 11px;
+}
+
 .jump-rope-milestone {
   position: absolute;
   left: 50%;
